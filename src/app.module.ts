@@ -7,6 +7,7 @@ import { OrdersModule } from './orders/orders.module';
 import { EslService } from './esl/esl.service';
 import { EslModule } from './esl/esl.module';
 import { HttpModule } from '@nestjs/axios';
+import { ProductsModule } from './products/products.module';
 @Module({
   imports: [
     HttpModule,
@@ -19,6 +20,7 @@ import { HttpModule } from '@nestjs/axios';
     }),
     EslModule,
     OrdersModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService, EslService],

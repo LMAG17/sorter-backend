@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { Product } from 'src/orders/entities/order.entity';
+import { Product } from 'src/products/entities/product.entity';
 
 @Injectable()
 export class EslService {
