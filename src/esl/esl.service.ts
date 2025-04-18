@@ -1,23 +1,31 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { Product } from 'src/products/entities/product.entity';
+import { CreateLocationDto } from './dto/create-location.dto';
 
 @Injectable()
 export class EslService {
   baseUrl: string | undefined = '';
   apiKey: string | undefined = '';
+  headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
   constructor(
     private readonly http: HttpService,
     private configService: ConfigService,
-  ) {}
-
-  async getAllESLs() {
+  ) {
     this.baseUrl = this.configService.get<string>('ESL_SERVER_URL');
     this.apiKey = this.configService.get<string>('API_KEY');
+    this.headers['x-api-key'] = this.apiKey;
+  }
+
+  // ------------ Labels ------------
+
+  async getAllLabels() {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/ESL`, { headers: { 'x-api-key': this.apiKey } })
+        .get(`${this.baseUrl}/ESL`, { headers: this.headers })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -25,11 +33,24 @@ export class EslService {
       throw error;
     }
   }
-  
-  async getESLById(id: string) {
+
+  async getAvailableLabels() {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/ESL/${id}`)
+        .get(`${this.baseUrl}/ESL`, { headers: this.headers })
+        .toPromise();
+
+      return response?.data?.filter(({ ID }: { ID: string }) => !!!ID);
+    } catch (error) {
+      console.error('Error fetching ESLs:', error);
+      throw error;
+    }
+  }
+
+  async getLabelById(id: string) {
+    try {
+      const response = await this.http
+        .get(`${this.baseUrl}/ESL/${id}`, { headers: this.headers })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -38,10 +59,10 @@ export class EslService {
     }
   }
 
-  async getSpecificProperty(id: string, property: string) {
+  async getSpecificLabelProperty(id: string, property: string) {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/ESL/${id}/${property}`)
+        .get(`${this.baseUrl}/ESL/${id}/${property}`, { headers: this.headers })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -50,10 +71,10 @@ export class EslService {
     }
   }
 
-  async updateESL(id: string, data: any) {
+  async updateLabel(id: string, data: any) {
     try {
       const response = await this.http
-        .put(`${this.baseUrl}/ESL/${id}`, data)
+        .put(`${this.baseUrl}/ESL/${id}`, data, { headers: this.headers })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -62,10 +83,12 @@ export class EslService {
     }
   }
 
-  async linkEslToProduct(id: string, productId: string) {
+  async linkLabelToLocation(id: string, locationId: string) {
     try {
       const response = await this.http
-        .put(`${this.baseUrl}/ESL/${id}/link/${productId}`)
+        .put(`${this.baseUrl}/ESL/${id}/link/${locationId}`, null, {
+          headers: this.headers,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -74,10 +97,12 @@ export class EslService {
     }
   }
 
-  async unlinkEslFromProduct(id: string) {
+  async unlinkLabelAndLocation(id: string) {
     try {
       const response = await this.http
-        .put(`${this.baseUrl}/ESL/${id}/unlink`)
+        .put(`${this.baseUrl}/ESL/${id}/unlink`, null, {
+          headers: this.headers,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -86,10 +111,12 @@ export class EslService {
     }
   }
 
-  async createProduct(data: Product) {
+  // ------------ Locations ------------
+
+  async createLocation(data: CreateLocationDto) {
     try {
       const response = await this.http
-        .put(`${this.baseUrl}/Products`, [data])
+        .put(`${this.baseUrl}/Products`, [data], { headers: this.headers })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -98,22 +125,10 @@ export class EslService {
     }
   }
 
-  async deleteProduct(id: string) {
+  async getAllLocations() {
     try {
       const response = await this.http
-        .delete(`${this.baseUrl}/Products/${id}`)
-        .toPromise();
-      return response?.data;
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      throw error;
-    }
-  }
-
-  async getAllProducts() {
-    try {
-      const response = await this.http
-        .get(`${this.baseUrl}/Products`)
+        .get(`${this.baseUrl}/Products`, { headers: this.headers })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -122,10 +137,25 @@ export class EslService {
     }
   }
 
-  async getProductById(id: string) {
+  async getAvailableLocations() {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/Products/${id}`)
+        .get(`${this.baseUrl}/Products`, { headers: this.headers })
+        .toPromise();
+
+      return response?.data?.filter(
+        ({ orderID }: { orderID: string }) => !!!orderID,
+      );
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      throw error;
+    }
+  }
+
+  async getLocationById(id: string) {
+    try {
+      const response = await this.http
+        .get(`${this.baseUrl}/Products/${id}`, { headers: this.headers })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -134,14 +164,62 @@ export class EslService {
     }
   }
 
-  async updateProduct(id: string, column: string, value: any) {
+  async updateLocation(
+    id: string,
+    column: 'id' | 'name' | 'productEAN' | 'orderID' | 'productQuantity',
+    value: number | string,
+  ) {
     try {
       const response = await this.http
-        .put(`${this.baseUrl}/Products/${id}/${column}/${value}`)
+        .post(
+          `${this.baseUrl}/Products/${encodeURIComponent(id)}/${encodeURIComponent(column)}/${encodeURIComponent(value)}`,
+          null,
+          {
+            headers: this.headers,
+          },
+        )
         .toPromise();
       return response?.data;
     } catch (error) {
-      console.error('Error updating product:', error);
+      // console.error('Error updating product:', error);
+      throw error;
+    }
+  }
+
+  async deleteLocation(id: string) {
+    try {
+      const response = await this.http
+        .delete(`${this.baseUrl}/Products/${id}`, { headers: this.headers })
+        .toPromise();
+      return response?.data;
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      throw error;
+    }
+  }
+
+  // ------------ Links ------------
+
+  async getAllLinks() {
+    try {
+      const response = await this.http
+        .get(`${this.baseUrl}/Links`, { headers: this.headers })
+        .toPromise();
+      return response?.data;
+    } catch (error) {
+      console.error('Error fetching links:', error);
+      throw error;
+    }
+  }
+
+  async getLinkById(id: string) {
+    try {
+      const response = await this.http
+        .get(`${this.baseUrl}/Links/${id}`, { headers: this.headers })
+        .toPromise();
+      return response?.data;
+    } catch (error) {
+      console.error('Error fetching link:', error);
       throw error;
     }
   }

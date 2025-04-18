@@ -1,10 +1,18 @@
 import { Product } from 'src/products/entities/product.entity';
-import { Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity()
 export class Order {
   @PrimaryGeneratedColumn()
   id: number;
+  @Column({ default: 'Sin asignar' })
+  status: string;
   @Column()
   wave: string;
   @Column({ nullable: true })

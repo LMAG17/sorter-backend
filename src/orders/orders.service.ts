@@ -6,6 +6,8 @@ import { In, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from 'src/products/entities/product.entity';
+import { AssignOrderDto } from './dto/assign-order.dto';
+import { AssignProductForPickingDto } from './dto/assign-product.dto';
 
 @Injectable()
 export class OrdersService {
@@ -42,6 +44,76 @@ export class OrdersService {
     });
 
     return this.ordersRepository.save(order);
+  }
+
+  async assign(
+    orderId: number,
+    assignOrderDto: AssignOrderDto,
+  ): Promise<Order> {
+    const { orderState, location } = assignOrderDto;
+
+    const order = await this.ordersRepository.findOne({
+      where: { id: orderId },
+      relations: ['products'],
+    });
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    order.status = orderState;
+    order.location = location;
+
+    const updatedOrder = await this.ordersRepository.save(order);
+
+    const ordernedProducts = order.products.sort((a, b) =>
+      a.EAN.localeCompare(b.EAN),
+    );
+
+    await this.eslService.updateLocation(location, 'orderID', order.id);
+    await this.eslService.updateLocation(
+      location,
+      'productEAN',
+      ordernedProducts[0].EAN,
+    );
+    await this.eslService.updateLocation(
+      location,
+      'productQuantity',
+      ordernedProducts[0].quantity,
+    );
+
+    return updatedOrder;
+  }
+
+  async assignProducForPicking(
+    orderId: number,
+    assignProductForPickingDto: AssignProductForPickingDto,
+  ) {
+    try {
+      const { productEAN } = assignProductForPickingDto;
+      const order = await this.ordersRepository.findOne({
+        where: { id: orderId },
+        relations: ['products'],
+      });
+      if (!order) {
+        throw new Error('Order not found');
+      }
+      const product = order.products.find((p) => p.EAN === productEAN);
+      if (!product) {
+        throw new Error('Product not found in order');
+      }
+      const { EAN, quantity } = product;
+      await this.eslService.updateLocation(order.location, 'productEAN', EAN);
+      await this.eslService.updateLocation(
+        order.location,
+        'productQuantity',
+        quantity,
+      );
+      return product;
+    } catch (error) {
+      console.error('Error assigning product for picking:', error);
+      throw error;
+    }
   }
 
   async findAll() {
