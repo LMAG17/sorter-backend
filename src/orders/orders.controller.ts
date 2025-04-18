@@ -22,12 +22,12 @@ export class OrdersController {
     return this.ordersService.create(createOrderDto);
   }
 
-  @Post(':id/assign')
+  @Post(':id/assign-location')
   assign(@Param('id') id: number, @Body() assignOrderDto: AssignOrderDto) {
     return this.ordersService.assign(id, assignOrderDto);
   }
 
-  @Post(':id/assing-product-picking')
+  @Post(':id/assign-product-picking')
   assignProducForPicking(
     @Param('id') id: number,
     @Body() assignProductForPickingDto: AssignProductForPickingDto,
