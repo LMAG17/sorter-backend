@@ -1,24 +1,61 @@
 import { IsString, IsArray, ValidateNested, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 class CreateProductInOrderDto {
+  @ApiProperty({
+    example: 'Shampoo Anticaspa',
+    description: 'Name of the product being ordered',
+  })
   @IsString()
   name: string;
 
+  @ApiProperty({
+    example: '7701234567890',
+    description: 'International Article Number (EAN) of the product',
+  })
   @IsString()
   EAN: string;
 
+  @ApiProperty({
+    example: 3,
+    description: 'Number of units requested for the product',
+  })
   @IsNumber()
   quantity: number;
 }
 
 export class CreateOrderDto {
+  @ApiProperty({
+    example: 'wave-001',
+    description: 'Identifier for the processing wave the order belongs to',
+  })
   @IsString()
   wave: string;
 
+  @ApiProperty({
+    example: 'warehouse-A1',
+    description: 'Location code where the order will be processed or picked',
+  })
   @IsString()
   location: string;
 
+  @ApiProperty({
+    type: [CreateProductInOrderDto],
+    description: 'List of products included in the order',
+    example: [
+      {
+        name: 'Shampoo Anticaspa',
+        EAN: '7701234567890',
+        quantity: 3,
+      },
+      {
+        name: 'Jabón Líquido Manos',
+        EAN: '7700987654321',
+        quantity: 5,
+      },
+    ],
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateProductInOrderDto)
