@@ -1,8 +1,14 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateOrderDto } from './create-order.dto';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNumber, IsString, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsInt,
+  IsNumber,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { OrderProductResponseDto } from './order-product-response.dto';
 
 class CreateProductInOrderDto {
   @ApiProperty({
@@ -30,6 +36,15 @@ class CreateProductInOrderDto {
   quantity: number;
 }
 export class UpdateOrderDto extends PartialType(CreateOrderDto) {
+  @ApiProperty({
+    required: false,
+    example: 0,
+    description:
+      'Status of the order, e.g., 0 ("Sin asignar"), 1 ("Asignado"), 2 ("En proceso"), 3 ("Completado")',
+  })
+  @IsInt()
+  status: number;
+
   @ApiProperty({
     required: false,
     example: 'wave-001',
@@ -65,6 +80,26 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
   })
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateProductInOrderDto)
-  products: CreateProductInOrderDto[];
+  @ApiProperty({
+    type: [OrderProductResponseDto],
+    description: 'List of products included in the order',
+    required: false,
+    example: [
+      {
+        id: 1,
+        name: 'Shampoo Anticaspa',
+        EAN: '7701234567890',
+        quantity: 3,
+        status: 'picked',
+      },
+      {
+        id: 2,
+        name: 'Jabón Líquido Manos',
+        EAN: '7700987654321',
+        quantity: 5,
+        status: 'picked',
+      },
+    ],
+  })
+  orderProducts: OrderProductResponseDto[];
 }

@@ -1,23 +1,24 @@
-import { Product } from 'src/products/entities/product.entity';
-import {
-  Column,
-  Entity,
-  JoinTable,
-  ManyToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { OrderProduct } from './order-product.entity';
 
 @Entity()
 export class Order {
   @PrimaryGeneratedColumn()
   id: number;
-  @Column({ default: 'Sin asignar' })
-  status: string;
+
+  @Column({ default: 0 })
+  status: number;
+
   @Column()
   wave: string;
+
   @Column({ nullable: true })
   location: string;
-  @ManyToMany(() => Product, (product) => product.orders, { nullable: true })
-  @JoinTable()
-  products: Product[];
+
+  @OneToMany(() => OrderProduct, (op) => op.order, {
+    cascade: true,
+    eager: true,
+    onDelete: 'CASCADE',
+  })
+  orderProducts: OrderProduct[];
 }

@@ -13,6 +13,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { AssignOrderDto } from './dto/assign-order.dto';
 import { AssignProductForPickingDto } from './dto/assign-product.dto';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { OrderResponseDto } from './dto/order-response.dto';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -24,7 +25,7 @@ export class OrdersController {
   @ApiResponse({
     status: 201,
     description: 'The record has been successfully created.',
-    type: CreateOrderDto,
+    type: [OrderResponseDto],
   })
   @Post()
   create(@Body() createOrderDto: CreateOrderDto) {
@@ -64,12 +65,38 @@ export class OrdersController {
   }
 
   @ApiOperation({
+    summary:
+      'This endpoint reduces the picked quantity of an assigned product.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'The picked quantity has been successfully reduced.',
+  })
+  @Post(':id/assigned-product-reduce-picked-quantity')
+  assignedProductReducePickedQuantity(@Param('id') id: number) {
+    return this.ordersService.assignedProductReducePickedQuantity(id);
+  }
+
+  @ApiOperation({
+    summary:
+      'This endpoint reduces the picked quantity of an assigned product.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'The picked quantity has been successfully increased.',
+  })
+  @Post(':id/assigned-product-increase-picked-quantity')
+  assignedProductIncreasePickedQuantity(@Param('id') id: number) {
+    return this.ordersService.assignedProductIncreasePickedQuantity(id);
+  }
+  
+  @ApiOperation({
     summary: 'This endpoint returns all orders in database.',
   })
   @ApiResponse({
     status: 200,
     description: 'The records have been successfully fetched.',
-    type: [CreateOrderDto],
+    type: [OrderResponseDto],
   })
   @Get()
   findAll() {

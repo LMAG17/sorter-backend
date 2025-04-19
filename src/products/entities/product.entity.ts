@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Order } from 'src/orders/entities/order.entity';
-import { Column, Entity, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class Product {
@@ -18,12 +17,4 @@ export class Product {
   })
   @Column()
   EAN: string;
-  @ApiProperty({
-    example: 10,
-    description: 'The amount of products to be packed.',
-  })
-  @Column()
-  quantity: number;
-  @ManyToMany(() => Order, (order) => order.products, { nullable: true })
-  orders: Order[];
 }

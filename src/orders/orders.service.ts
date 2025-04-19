@@ -26,21 +26,28 @@ export class OrdersService {
       EAN: In(incomingProducts.map((p) => p.EAN)),
     });
 
-    const existingEANs = new Set(existingProducts.map((p) => p.EAN));
+    const existingEANMap = new Map(existingProducts.map((p) => [p.EAN, p]));
 
     const newProductsData = incomingProducts.filter(
-      (p) => !existingEANs.has(p.EAN),
+      (p) => !existingEANMap.has(p.EAN),
     );
 
     const newProducts = this.productRepository.create(newProductsData);
     await this.productRepository.save(newProducts);
 
     const allProducts = [...existingProducts, ...newProducts];
+    const productMap = new Map(allProducts.map((p) => [p.EAN, p]));
+
+    const orderProducts = incomingProducts.map((p) => ({
+      product: productMap.get(p.EAN),
+      quantity: p.quantity,
+      pickedQuantity: p.quantity,
+    }));
 
     const order = this.ordersRepository.create({
       wave,
       location,
-      products: allProducts,
+      orderProducts,
     });
 
     return this.ordersRepository.save(order);
@@ -50,36 +57,32 @@ export class OrdersService {
     orderId: number,
     assignOrderDto: AssignOrderDto,
   ): Promise<Order> {
-    const { orderState, location } = assignOrderDto;
+    const { location } = assignOrderDto;
 
     const order = await this.ordersRepository.findOne({
       where: { id: orderId },
-      relations: ['products'],
+      relations: ['orderProducts', 'orderProducts.product'],
     });
 
     if (!order) {
       throw new Error('Order not found');
     }
 
-    order.status = orderState;
+    order.status = 1;
     order.location = location;
 
     const updatedOrder = await this.ordersRepository.save(order);
-
-    const ordernedProducts = order.products.sort((a, b) =>
-      a.EAN.localeCompare(b.EAN),
-    );
 
     await this.eslService.updateLocation(location, 'orderID', order.id);
     await this.eslService.updateLocation(
       location,
       'productEAN',
-      ordernedProducts[0].EAN,
+      updatedOrder.orderProducts[0].product.EAN,
     );
     await this.eslService.updateLocation(
       location,
       'productQuantity',
-      ordernedProducts[0].quantity,
+      updatedOrder.orderProducts[0].quantity,
     );
 
     return updatedOrder;
@@ -93,44 +96,127 @@ export class OrdersService {
       const { productEAN } = assignProductForPickingDto;
       const order = await this.ordersRepository.findOne({
         where: { id: orderId },
-        relations: ['products'],
       });
       if (!order) {
         throw new Error('Order not found');
       }
-      const product = order.products.find((p) => p.EAN === productEAN);
-      if (!product) {
+      const orderProduct = order.orderProducts.find(
+        (p) => p.product.EAN === productEAN,
+      );
+      if (!orderProduct) {
         throw new Error('Product not found in order');
       }
-      const { EAN, quantity } = product;
-      await this.eslService.updateLocation(order.location, 'productEAN', EAN);
+
+      await this.eslService.updateLocation(
+        order.location,
+        'productEAN',
+        orderProduct.product.EAN,
+      );
       await this.eslService.updateLocation(
         order.location,
         'productQuantity',
-        quantity,
+        orderProduct.quantity,
       );
-      return product;
+      return orderProduct;
     } catch (error) {
       console.error('Error assigning product for picking:', error);
       throw error;
     }
   }
 
-  async findAll() {
-    return await this.ordersRepository.find({
-      relations: ['products'],
+  async assignedProductReducePickedQuantity(orderId: number) {
+    const order = await this.ordersRepository.findOne({
+      where: { id: orderId },
+      relations: ['orderProducts', 'orderProducts.product'],
     });
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    const location = await this.eslService.getLocationById(order.location);
+    if (!location) {
+      throw new Error('Location not assigned');
+    }
+    const assignedProduct = order.orderProducts.find(
+      (p) => p.product.EAN === location.productEAN,
+    );
+    if (!assignedProduct) {
+      throw new Error('Assigned product not found');
+    }
+    if (assignedProduct.pickedQuantity > 0) {
+      assignedProduct.pickedQuantity--;
+    } else {
+      throw new Error('Picked quantity cannot be less than 0');
+    }
+
+    return await this.ordersRepository.save(order);
+  }
+
+  async assignedProductIncreasePickedQuantity(orderId: number) {
+    const order = await this.ordersRepository.findOne({
+      where: { id: orderId },
+      relations: ['orderProducts', 'orderProducts.product'],
+    });
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+    const location = await this.eslService.getLocationById(order.location);
+    if (!location) {
+      throw new Error('Location not assigned');
+    }
+    const assignedProduct = order.orderProducts.find(
+      (p) => p.product.EAN === location.productEAN,
+    );
+    if (!assignedProduct) {
+      throw new Error('Assigned product not found');
+    }
+    if (assignedProduct.pickedQuantity < assignedProduct.quantity) {
+      assignedProduct.pickedQuantity++;
+    } else {
+      throw new Error(
+        'Picked quantity cannot be greater than the total quantity',
+      );
+    }
+
+    return await this.ordersRepository.save(order);
+  }
+
+  async findAll() {
+    return await this.ordersRepository.find();
   }
 
   async findOne(id: number) {
     return await this.ordersRepository.findOne({
       where: { id },
-      relations: ['products'],
     });
   }
+  async update(id: number, updateOrderDto: UpdateOrderDto) {
+    const order = await this.ordersRepository.findOne({
+      where: { id },
+      relations: ['orderProducts', 'orderProducts.product'],
+    });
 
-  update(id: number, updateOrderDto: UpdateOrderDto) {
-    return this.ordersRepository.update(id, updateOrderDto);
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    order.status = updateOrderDto.status ?? order.status;
+    order.location = updateOrderDto.location ?? order.location;
+    order.wave = updateOrderDto.wave ?? order.wave;
+    if (updateOrderDto?.orderProducts.length > 0) {
+      for (const product of updateOrderDto.orderProducts) {
+        const existingProduct = order.orderProducts.find(
+          (p) => p.product.EAN === product.product.EAN,
+        );
+        if (existingProduct) {
+          existingProduct.quantity = product.quantity;
+        }
+      }
+    }
+
+    return await this.ordersRepository.save(order);
   }
 
   remove(id: number) {

@@ -83,10 +83,44 @@ export class EslService {
     }
   }
 
+  async emitLabelSound(id: string) {
+    const response = await this.http
+      .post(`/esl/${id}/SOUND/130/HIGH/1318,1567,2637,2093,2349,3135`, null, {
+        headers: this.headers,
+      })
+      .toPromise();
+    return response;
+  }
+
+  async flashLabelLed(
+    id: string,
+    color: 'RED' | 'GREEN' | 'BLUE' | 'ORANGE' | 'PURPLE' | 'CYAN',
+    period: number,
+    percentage: number,
+    repeatTimes: number,
+  ) {
+    //
+    const response = await this.http
+      .post(
+        `/esl/${id}/LED/0/FLASH|${color}/${period}|${percentage}|${repeatTimes}`,
+        null,
+        {
+          headers: this.headers,
+        },
+      )
+      .toPromise();
+    return response;
+  }
+
   async linkLabelToLocation(id: string, locationId: string) {
     try {
+      await this.http
+        .delete(`${this.baseUrl}/ESL/${id}/link`, {
+          headers: this.headers,
+        })
+        .toPromise();
       const response = await this.http
-        .put(`${this.baseUrl}/ESL/${id}/link/${locationId}`, null, {
+        .post(`${this.baseUrl}/ESL/${id}/link/${locationId}`, null, {
           headers: this.headers,
         })
         .toPromise();
