@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
@@ -9,6 +9,7 @@ import { EslModule } from './esl/esl.module';
 import { HttpModule } from '@nestjs/axios';
 import { ProductsModule } from './products/products.module';
 import { OrderGroupsModule } from './order-groups/order-groups.module';
+import { LoggerMiddleware } from './middlewares/logger.middleware';
 @Module({
   imports: [
     HttpModule,
@@ -27,4 +28,10 @@ import { OrderGroupsModule } from './order-groups/order-groups.module';
   controllers: [AppController],
   providers: [AppService, EslService],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(LoggerMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

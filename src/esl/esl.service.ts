@@ -85,9 +85,13 @@ export class EslService {
 
   async emitLabelSound(id: string) {
     const response = await this.http
-      .post(`/esl/${id}/SOUND/130/HIGH/1318,1567,2637,2093,2349,3135`, null, {
-        headers: this.headers,
-      })
+      .post(
+        `${this.baseUrl}/ESL/${id}/SOUND/130/HIGH/1318,1567,2637,2093,2349,3135`,
+        null,
+        {
+          headers: this.headers,
+        },
+      )
       .toPromise();
     return response;
   }
@@ -99,10 +103,9 @@ export class EslService {
     percentage: number,
     repeatTimes: number,
   ) {
-    //
     const response = await this.http
       .post(
-        `/esl/${id}/LED/0/FLASH|${color}/${period}|${percentage}|${repeatTimes}`,
+        `${this.baseUrl}/ESL/${id}/LED/0/FLASH|${color}/${period}|${percentage}|${repeatTimes}`,
         null,
         {
           headers: this.headers,

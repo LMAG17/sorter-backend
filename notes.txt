@@ -1,0 +1,15 @@
+Mostrar un listado de las ubicaciones
+Mostrar un listado de las ubicaciones sin asignar pedido
+Agregar un estado a las ordenes,
+Mostrar las ordenes por asignar,
+Hacer que las ordenes queden asignadas a una ubicacion,
+Hacer que las ubicaciones actualicen los labels de acuerdo al producto escaneado (Frontend), (EAN en orden alfabetico),
+
+
+
+
+B2EE07DA
+B2EE07DE
+B2EE0800
+B2EE04C8
+B2EE07FD

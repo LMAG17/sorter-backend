@@ -208,7 +208,7 @@ export class OrdersService {
     if (updateOrderDto?.orderProducts.length > 0) {
       for (const product of updateOrderDto.orderProducts) {
         const existingProduct = order.orderProducts.find(
-          (p) => p.product.EAN === product.product.EAN,
+          (p) => p.product?.EAN === product.product?.EAN,
         );
         if (existingProduct) {
           existingProduct.quantity = product.quantity;

@@ -72,7 +72,7 @@ export class OrdersController {
     status: 200,
     description: 'The picked quantity has been successfully reduced.',
   })
-  @Post(':id/assigned-product-reduce-picked-quantity')
+  @Get(':id/assigned-product-reduce-picked-quantity')
   assignedProductReducePickedQuantity(@Param('id') id: number) {
     return this.ordersService.assignedProductReducePickedQuantity(id);
   }
@@ -85,7 +85,7 @@ export class OrdersController {
     status: 200,
     description: 'The picked quantity has been successfully increased.',
   })
-  @Post(':id/assigned-product-increase-picked-quantity')
+  @Get(':id/assigned-product-increase-picked-quantity')
   assignedProductIncreasePickedQuantity(@Param('id') id: number) {
     return this.ordersService.assignedProductIncreasePickedQuantity(id);
   }

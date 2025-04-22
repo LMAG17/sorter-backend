@@ -186,4 +186,20 @@ export class ESLController {
   async getAvailableLabels() {
     return await this.eslService.getAvailableLabels();
   }
+
+  @ApiOperation({ summary: 'Makes the label emit a sound' })
+  @Post('labels/:id/sound')
+  @ApiParam({ name: 'id', description: 'Label ID' })
+  @ApiResponse({ status: 200, description: 'Sound emitted' })
+  async emitLabelSound(@Param('id') id: string) {
+    return await this.eslService.emitLabelSound(id);
+  }
+
+  @ApiOperation({ summary: 'Makes the label blink' })
+  @Post('labels/:id/blink')
+  @ApiParam({ name: 'id', description: 'Label ID' })
+  @ApiResponse({ status: 200, description: 'Label blinking' })
+  async blinkLabel(@Param('id') id: string) {
+    return await this.eslService.flashLabelLed(id, 'RED', 1000, 100, 2);
+  }
 }
