@@ -89,7 +89,7 @@ export class OrdersController {
   assignedProductIncreasePickedQuantity(@Param('id') id: number) {
     return this.ordersService.assignedProductIncreasePickedQuantity(id);
   }
-  
+
   @ApiOperation({
     summary: 'This endpoint returns all orders in database.',
   })
@@ -138,5 +138,17 @@ export class OrdersController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.ordersService.remove(+id);
+  }
+
+  @ApiOperation({
+    summary: 'This will submit a complete for current Product',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'This product is complete of picking',
+  })
+  @Post('submit-product-quantity/:locationId')
+  submitProductQuantity(@Param('locationId') locationId: string) {
+    return this.ordersService.submitProductCompleted(locationId);
   }
 }

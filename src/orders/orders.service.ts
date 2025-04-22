@@ -222,4 +222,47 @@ export class OrdersService {
   remove(id: number) {
     return this.ordersRepository.delete(id);
   }
+
+  async submitProductCompleted(locationId: string) {
+    const order = await this.ordersRepository.findOne({
+      where: { location: locationId },
+    });
+    if (!order) {
+      throw new Error('No hay orden asignada a esta ubicación');
+    }
+    const location = await this.eslService.getLocationById(locationId);
+
+    const currentProductEan = location[0].productEAN;
+
+    const currentProductIndex = order.orderProducts.findIndex(
+      (product) => product.product.EAN === currentProductEan,
+    );
+
+    if (currentProductIndex === -1) {
+      throw new Error('No hay más productos asignados a esta ubicación');
+    }
+
+    const nextProduct = order.orderProducts[currentProductIndex + 1];
+    if (!nextProduct) {
+      throw new Error('No hay más productos asignados a esta ubicación');
+    }
+
+    const MAC = await this.eslService.getLabelById(locationId);
+
+    console.log('MAC', MAC[0].MAC);
+
+    this.eslService.emitLabelSound(MAC[0].MAC);
+    this.eslService.updateLocation(
+      locationId,
+      'productEAN',
+      nextProduct.product.EAN,
+    );
+    this.eslService.updateLocation(
+      locationId,
+      'productQuantity',
+      nextProduct.quantity,
+    );
+
+    return order;
+  }
 }
