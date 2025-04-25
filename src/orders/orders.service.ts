@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Get, Injectable } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { EslService } from 'src/esl/esl.service';
@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from 'src/products/entities/product.entity';
 import { AssignOrderDto } from './dto/assign-order.dto';
 import { AssignProductForPickingDto } from './dto/assign-product.dto';
+import { SapService } from 'src/sap/sap.service';
 
 @Injectable()
 export class OrdersService {
@@ -17,6 +18,7 @@ export class OrdersService {
     private ordersRepository: Repository<Order>,
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
+    private readonly sapService: SapService,
   ) {}
 
   async create(createOrderDto: CreateOrderDto): Promise<Order> {
@@ -224,34 +226,41 @@ export class OrdersService {
   }
 
   async submitProductCompleted(locationId: string) {
+    const [location] = await this.eslService.getLocationById(locationId);
+
+    if (!location) {
+      throw new Error('No hay ubicación asignada');
+    }
+
     const order = await this.ordersRepository.findOne({
-      where: { location: locationId },
+      where: { id: location.orderID },
     });
+
     if (!order) {
       throw new Error('No hay orden asignada a esta ubicación');
     }
-    const location = await this.eslService.getLocationById(locationId);
 
-    const currentProductEan = location[0].productEAN;
+    const currentProductEan = location.productEAN;
 
     const currentProductIndex = order.orderProducts.findIndex(
       (product) => product.product.EAN === currentProductEan,
     );
 
     if (currentProductIndex === -1) {
-      throw new Error('No hay más productos asignados a esta ubicación');
+      throw new Error('Producto actual no encontrado en la orden');
     }
 
-    const nextProduct = order.orderProducts[currentProductIndex + 1];
+    const nextProduct = order.orderProducts.filter(
+      (product) => product.product.EAN !== currentProductEan,
+    )[0];
+
     if (!nextProduct) {
       throw new Error('No hay más productos asignados a esta ubicación');
     }
 
-    const MAC = await this.eslService.getLabelById(locationId);
+    const [MAC] = await this.eslService.getLabelById(locationId);
 
-    console.log('MAC', MAC[0].MAC);
-
-    this.eslService.emitLabelSound(MAC[0].MAC);
+    this.eslService.emitLabelSound(MAC.MAC);
     this.eslService.updateLocation(
       locationId,
       'productEAN',
@@ -264,5 +273,9 @@ export class OrdersService {
     );
 
     return order;
+  }
+
+  async getOrdersByOrdersFromSAP() {
+    return await this.sapService.getOrders();
   }
 }

@@ -10,6 +10,8 @@ import { HttpModule } from '@nestjs/axios';
 import { ProductsModule } from './products/products.module';
 import { OrderGroupsModule } from './order-groups/order-groups.module';
 import { LoggerMiddleware } from './middlewares/logger.middleware';
+import { SapModule } from './sap/sap.module';
+import { SapService } from './sap/sap.service';
 @Module({
   imports: [
     HttpModule,
@@ -24,9 +26,10 @@ import { LoggerMiddleware } from './middlewares/logger.middleware';
     OrdersModule,
     ProductsModule,
     OrderGroupsModule,
+    SapModule,
   ],
   controllers: [AppController],
-  providers: [AppService, EslService],
+  providers: [AppService],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

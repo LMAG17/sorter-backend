@@ -6,12 +6,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Order } from './entities/order.entity';
 import { ProductsModule } from 'src/products/products.module';
 import { Product } from 'src/products/entities/product.entity';
+import { SapModule } from 'src/sap/sap.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, Product]),
     forwardRef(() => ProductsModule),
     EslModule,
+    SapModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

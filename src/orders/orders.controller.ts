@@ -151,4 +151,16 @@ export class OrdersController {
   submitProductQuantity(@Param('locationId') locationId: string) {
     return this.ordersService.submitProductCompleted(locationId);
   }
+
+  @ApiOperation({
+    summary: 'This will return all orders from SAP',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'This will return all orders from SAP',
+  })
+  @Get('sap')
+  async getOrders() {
+    return this.ordersService.getOrdersByOrdersFromSAP();
+  }
 }
