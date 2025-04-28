@@ -14,6 +14,8 @@ import { AssignOrderDto } from './dto/assign-order.dto';
 import { AssignProductForPickingDto } from './dto/assign-product.dto';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { OrderResponseDto } from './dto/order-response.dto';
+import { SubmitProductQuantityDto } from './dto/submit-product-quantity.dto';
+import { SubmitOrderDto } from './dto/submit-order.dto';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -91,7 +93,19 @@ export class OrdersController {
   }
 
   @ApiOperation({
-    summary: 'This endpoint returns all orders in database.',
+    summary: 'This will return all orders from DATABASE',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'This will return all orders from DATABASE',
+  })
+  @Post('classic')
+  async getOrders() {
+    return this.ordersService.findAll();
+  }
+
+  @ApiOperation({
+    summary: 'This endpoint returns all orders in SAP and DATABASE.',
   })
   @ApiResponse({
     status: 200,
@@ -100,7 +114,7 @@ export class OrdersController {
   })
   @Get()
   findAll() {
-    return this.ordersService.findAll();
+    return this.ordersService.findAllWithSap();
   }
 
   @ApiOperation({
@@ -142,25 +156,44 @@ export class OrdersController {
 
   @ApiOperation({
     summary: 'This will submit a complete for current Product',
+    description: 'This will submit a complete for current Product',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'This product is complete of picking',
+  })
+  @Post(':id/submit-product-complete')
+  submitProductQuantity(
+    @Param('id') id: string,
+    @Body() submitProductDto: SubmitProductQuantityDto,
+  ) {
+    return this.ordersService.submitProductQuantity(+id, submitProductDto);
+  }
+
+  @ApiOperation({
+    summary: 'This will submit a complete for current Product',
   })
   @ApiResponse({
     status: 200,
     description: 'This product is complete of picking',
   })
   @Post('submit-product-quantity/:locationId')
-  submitProductQuantity(@Param('locationId') locationId: string) {
+  submitProductComplete(@Param('locationId') locationId: string) {
     return this.ordersService.submitProductCompleted(locationId);
   }
 
   @ApiOperation({
-    summary: 'This will return all orders from SAP',
+    summary: 'This will submit a complete for order',
   })
   @ApiResponse({
     status: 200,
-    description: 'This will return all orders from SAP',
+    description: 'This product is complete of picking',
   })
-  @Get('sap')
-  async getOrders() {
-    return this.ordersService.getOrdersByOrdersFromSAP();
+  @Post(':id/submit-order-complete')
+  submitOrderComplete(
+    @Param('id') id: string,
+    @Body() submitOrderDto: SubmitOrderDto,
+  ) {
+    return this.ordersService.submitOrderComplete(+id, submitOrderDto);
   }
 }

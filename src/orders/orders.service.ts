@@ -9,6 +9,8 @@ import { Product } from 'src/products/entities/product.entity';
 import { AssignOrderDto } from './dto/assign-order.dto';
 import { AssignProductForPickingDto } from './dto/assign-product.dto';
 import { SapService } from 'src/sap/sap.service';
+import { SubmitProductQuantityDto } from './dto/submit-product-quantity.dto';
+import { SubmitOrderDto } from './dto/submit-order.dto';
 
 @Injectable()
 export class OrdersService {
@@ -22,7 +24,13 @@ export class OrdersService {
   ) {}
 
   async create(createOrderDto: CreateOrderDto): Promise<Order> {
-    const { wave, location, products: incomingProducts } = createOrderDto;
+    const {
+      wave,
+      location,
+      PEDSAP,
+      status,
+      products: incomingProducts,
+    } = createOrderDto;
 
     const existingProducts = await this.productRepository.findBy({
       EAN: In(incomingProducts.map((p) => p.EAN)),
@@ -43,13 +51,16 @@ export class OrdersService {
     const orderProducts = incomingProducts.map((p) => ({
       product: productMap.get(p.EAN),
       quantity: p.quantity,
-      pickedQuantity: p.quantity,
+      pickedQuantity: 0,
+      done: false,
     }));
 
     const order = this.ordersRepository.create({
       wave,
       location,
+      PEDSAP,
       orderProducts,
+      status,
     });
 
     return this.ordersRepository.save(order);
@@ -102,23 +113,34 @@ export class OrdersService {
       if (!order) {
         throw new Error('Order not found');
       }
-      const orderProduct = order.orderProducts.find(
+      const orderProductIndex = order.orderProducts.findIndex(
         (p) => p.product.EAN === productEAN,
       );
+
+      const orderProduct = order.orderProducts[orderProductIndex];
+
       if (!orderProduct) {
         throw new Error('Product not found in order');
       }
 
-      await this.eslService.updateLocation(
-        order.location,
-        'productEAN',
-        orderProduct.product.EAN,
-      );
-      await this.eslService.updateLocation(
-        order.location,
-        'productQuantity',
-        orderProduct.quantity,
-      );
+      this.ordersRepository.update(order.id, {
+        currentProductEAN: orderProduct.product.EAN,
+        currentProductQuantity: orderProduct.quantity,
+      });
+      try {
+        await this.eslService.updateLocation(
+          order.location,
+          'productEAN',
+          orderProduct.product.EAN,
+        );
+        await this.eslService.updateLocation(
+          order.location,
+          'productQuantity',
+          orderProduct.quantity,
+        );
+      } catch (error) {
+        console.log('Error updating ESL location:', error);
+      }
       return orderProduct;
     } catch (error) {
       console.error('Error assigning product for picking:', error);
@@ -189,6 +211,30 @@ export class OrdersService {
     return await this.ordersRepository.find();
   }
 
+  async findAllWithSap() {
+    const orders = await this.sapService.getOrders();
+
+    const existingOrders = await this.ordersRepository.findBy({
+      PEDSAP: In(orders.map((order) => order.PEDSAP)),
+    });
+
+    const existingOrdersMap = new Map(
+      existingOrders.map((order) => [order.PEDSAP, order]),
+    );
+    const newOrders = orders.filter(
+      (order) => !existingOrdersMap.has(order.PEDSAP),
+    );
+
+    let newOrdersData: any[] = [];
+
+    for (const order of newOrders) {
+      const orderData = await this.create(order);
+      newOrdersData.push(orderData);
+    }
+
+    return [...existingOrders, ...newOrdersData];
+  }
+
   async findOne(id: number) {
     return await this.ordersRepository.findOne({
       where: { id },
@@ -223,6 +269,71 @@ export class OrdersService {
 
   remove(id: number) {
     return this.ordersRepository.delete(id);
+  }
+
+  async submitProductQuantity(
+    orderId: number,
+    product: SubmitProductQuantityDto,
+  ) {
+    const order = await this.ordersRepository.findOne({
+      where: { id: orderId },
+      relations: ['orderProducts', 'orderProducts.product'],
+    });
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    const orderProductIndex = order.orderProducts.findIndex(
+      (p) => p.product.EAN === product.productEAN,
+    );
+
+    const orderProduct = order.orderProducts[orderProductIndex];
+
+    if (!orderProduct) {
+      throw new Error('Product not found in order');
+    }
+
+    if (product.quantity < 0 || product.quantity > orderProduct.quantity) {
+      throw new Error(
+        'Invalid quantity. Quantity must be greater than 0 and less than or equal to the total quantity.',
+      );
+    }
+    order.currentProductEAN = '';
+    order.currentProductQuantity = 0;
+    order.orderProducts[orderProductIndex].pickedQuantity = product.quantity;
+    order.orderProducts[orderProductIndex].done = true;
+
+    return await this.ordersRepository.save(order);
+  }
+
+  async submitOrderComplete(orderID: number, submitOrderDto: SubmitOrderDto) {
+    const order = await this.ordersRepository.findOne({
+      where: { id: orderID },
+      relations: ['orderProducts', 'orderProducts.product'],
+    });
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    if (order.PEDSAP === null || order.PEDSAP === undefined) {
+      throw new Error('Order not assigned to SAP');
+    }
+
+    await this.sapService.updateOrder(
+      order.PEDSAP,
+      order.orderProducts.map((prod) => ({
+        MATNR: prod.product.EAN,
+        LFIMG: prod.pickedQuantity,
+      })),
+      submitOrderDto.isLastBox,
+    );
+
+    if (submitOrderDto.isLastBox) {
+      order.status = 3;
+    }
+
+    return await this.ordersRepository.save(order);
   }
 
   async submitProductCompleted(locationId: string) {
@@ -273,9 +384,5 @@ export class OrdersService {
     );
 
     return order;
-  }
-
-  async getOrdersByOrdersFromSAP() {
-    return await this.sapService.getOrders();
   }
 }

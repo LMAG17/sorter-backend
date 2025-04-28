@@ -4,13 +4,6 @@ import { ApiProperty } from '@nestjs/swagger';
 
 class CreateProductInOrderDto {
   @ApiProperty({
-    example: 'Shampoo Anticaspa',
-    description: 'Name of the product being ordered',
-  })
-  @IsString()
-  name: string;
-
-  @ApiProperty({
     example: '7701234567890',
     description: 'International Article Number (EAN) of the product',
   })
@@ -27,18 +20,33 @@ class CreateProductInOrderDto {
 
 export class CreateOrderDto {
   @ApiProperty({
-    example: 'wave-001',
+    example: '1',
+    description: 'Unique identifier for the order',
+  })
+  @IsString()
+  PEDSAP: string;
+
+  @ApiProperty({
+    example: '000123',
     description: 'Identifier for the processing wave the order belongs to',
   })
   @IsString()
   wave: string;
 
   @ApiProperty({
-    example: 'warehouse-A1',
+    example: '10004',
     description: 'Location code where the order will be processed or picked',
   })
   @IsString()
   location: string;
+
+  @ApiProperty({
+    example: 0,
+    description:
+      'Status for order  0 - Not assigned, 1 - Assigned 2 - In process, 3 - Completed',
+  })
+  @IsString()
+  status?: number;
 
   @ApiProperty({
     type: [CreateProductInOrderDto],

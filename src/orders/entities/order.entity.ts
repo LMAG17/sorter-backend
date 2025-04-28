@@ -6,6 +6,15 @@ export class Order {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ nullable: true })
+  currentProductEAN?: string;
+
+  @Column({ nullable: true })
+  currentProductQuantity?: number;
+
+  @Column({ nullable: true })
+  PEDSAP?: string;
+
   @Column({ default: 0 })
   status: number;
 

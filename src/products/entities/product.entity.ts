@@ -9,8 +9,6 @@ export class Product {
     example: 'Lenceria XS',
     description: 'The name of the product.',
   })
-  @Column()
-  name: string;
   @ApiProperty({
     example: '123456789',
     description: 'A EAN identificator of the product.',

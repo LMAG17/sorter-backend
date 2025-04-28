@@ -9,4 +9,8 @@ export class SapController {
   async getSapData() {
     return this.sapService.getOrders();
   }
+  @Get('test-update')
+  async testUpdate() {
+    return this.sapService.updateOrder('123', [], false);
+  }
 }
