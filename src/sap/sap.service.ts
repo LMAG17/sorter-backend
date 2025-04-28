@@ -29,18 +29,31 @@ export class SapService {
     const products =
       data['soap-env:Envelope']['soap-env:Body'][
         'n0:ZWS_ENVIO_OLA_UBICACResponse'
-      ]['T_ZSDT_LOGMULVEN']['item'];
+      ]['T_ZSDT_LOGMULVEN']['item'] ?? [];
 
-    let locationsFormatted = locations.map((location) => {
-      return {
-        location: location.UBICA,
-        wave: location.OLA,
-        PEDSAP: location.PEDSAP,
-        message: location.MENSAJE,
-        status: !!location.UBICA ? 1 : 0,
-        products: [] as any[],
-      };
-    });
+    const locationsIsArray = Array.isArray(locations);
+
+    let locationsFormatted = locationsIsArray
+      ? locations.map((location) => {
+          return {
+            location: location.UBICA,
+            wave: location.OLA,
+            PEDSAP: location.PEDSAP,
+            message: location.MENSAJE,
+            status: !!location.UBICA ? 1 : 0,
+            products: [] as any[],
+          };
+        })
+      : [
+          {
+            location: locations?.['UBICA'],
+            wave: locations?.['OLA'],
+            PEDSAP: locations?.['PEDSAP'],
+            message: locations?.['MENSAJE'],
+            status: !!locations?.['UBICA'] ? 1 : 0,
+            products: [] as any[],
+          },
+        ];
 
     for (const product of products) {
       const location = locationsFormatted.find(
