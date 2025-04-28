@@ -127,8 +127,8 @@ export class SapService {
         },
       });
       console.log('Request', xml);
-      const getMocked = false;
-      const response = getMocked
+      const DUMMY = false;
+      const response = DUMMY
         ? this.mockGetOrders()
         : await this.http
             .post(
