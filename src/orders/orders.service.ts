@@ -331,8 +331,9 @@ export class OrdersService {
 
     if (submitOrderDto.isLastBox) {
       order.status = 3;
-      this.eslService.updateLocation(order.location, 'productEAN', '');
+      this.eslService.updateLocation(order.location, 'productEAN', ' ');
       this.eslService.updateLocation(order.location, 'productQuantity', 0);
+      this.eslService.updateLocation(order.location, 'orderID', ' ');
     }
 
     return await this.ordersRepository.save(order);
