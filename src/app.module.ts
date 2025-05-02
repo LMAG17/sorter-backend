@@ -4,14 +4,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OrdersModule } from './orders/orders.module';
-import { EslService } from './esl/esl.service';
 import { EslModule } from './esl/esl.module';
 import { HttpModule } from '@nestjs/axios';
 import { ProductsModule } from './products/products.module';
-import { OrderGroupsModule } from './order-groups/order-groups.module';
 import { LoggerMiddleware } from './middlewares/logger.middleware';
 import { SapModule } from './sap/sap.module';
-import { SapService } from './sap/sap.service';
 @Module({
   imports: [
     HttpModule,
@@ -25,7 +22,6 @@ import { SapService } from './sap/sap.service';
     EslModule,
     OrdersModule,
     ProductsModule,
-    OrderGroupsModule,
     SapModule,
   ],
   controllers: [AppController],

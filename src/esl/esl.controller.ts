@@ -45,6 +45,18 @@ export class ESLController {
     return await this.eslService.getAllLocations();
   }
 
+  @ApiOperation({ summary: 'Get all locations by sorter' })
+  @Get('locations/sorter/:sorterId')
+  @ApiParam({ name: 'sorterId', description: 'Sorter ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of all locations by sorter',
+    type: [CreateLocationDto],
+  })
+  async getLocationsBySorter(@Param('sorterId') sorterId: string) {
+    return await this.eslService.getAllLocationsBySorter(sorterId);
+  }
+
   @Get('locations-available')
   @ApiOperation({ summary: 'Get all available locations' })
   @ApiResponse({

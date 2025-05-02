@@ -174,6 +174,21 @@ export class EslService {
     }
   }
 
+  async getAllLocationsBySorter(sorterID: string) {
+    try {
+      const response = await this.http
+        .get(`${this.baseUrl}/Products`, { headers: this.headers })
+        .toPromise();
+
+      return response?.data?.filter(
+        ({ sorter }: { sorter: string }) => sorter === sorterID,
+      );
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      throw error;
+    }
+  }
+
   async getAvailableLocations() {
     try {
       const response = await this.http

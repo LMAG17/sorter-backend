@@ -11,15 +11,15 @@ import { AssignProductForPickingDto } from './dto/assign-product.dto';
 import { SapService } from 'src/sap/sap.service';
 import { SubmitProductQuantityDto } from './dto/submit-product-quantity.dto';
 import { SubmitOrderDto } from './dto/submit-order.dto';
+import { ProductsService } from 'src/products/products.service';
 
 @Injectable()
 export class OrdersService {
   constructor(
-    private readonly eslService: EslService,
     @InjectRepository(Order)
     private ordersRepository: Repository<Order>,
-    @InjectRepository(Product)
-    private productRepository: Repository<Product>,
+    private readonly eslService: EslService,
+    private readonly productsService: ProductsService,
     private readonly sapService: SapService,
   ) {}
 
@@ -32,9 +32,8 @@ export class OrdersService {
       products: incomingProducts,
     } = createOrderDto;
 
-    const existingProducts = await this.productRepository.findBy({
-      EAN: In(incomingProducts.map((p) => p.EAN)),
-    });
+    const existingProducts =
+      await this.productsService.findOneByEAN(incomingProducts);
 
     const existingEANMap = new Map(existingProducts.map((p) => [p.EAN, p]));
 
@@ -42,8 +41,7 @@ export class OrdersService {
       (p) => !existingEANMap.has(p.EAN),
     );
 
-    const newProducts = this.productRepository.create(newProductsData);
-    await this.productRepository.save(newProducts);
+    const newProducts = await this.productsService.createMany(newProductsData);
 
     const allProducts = [...existingProducts, ...newProducts];
     const productMap = new Map(allProducts.map((p) => [p.EAN, p]));
@@ -229,6 +227,15 @@ export class OrdersService {
 
     for (const order of newOrders) {
       const orderData = await this.create(order);
+      try {
+        await this.eslService.updateLocation(
+          order.location,
+          'orderID',
+          orderData.PEDSAP ?? orderData.id,
+        );
+      } catch (error) {
+        console.log('Error updating ESL location:', error);
+      }
       newOrdersData.push(orderData);
     }
 
@@ -387,5 +394,72 @@ export class OrdersService {
     );
 
     return order;
+  }
+
+  async updateLocationWithEANandQuantity(
+    locationId: string,
+    productEAN: string,
+    productQuantity: number,
+  ) {
+    await this.eslService.updateLocation(locationId, 'productEAN', productEAN);
+    await this.eslService.updateLocation(
+      locationId,
+      'productQuantity',
+      productQuantity,
+    );
+
+    return locationId;
+  }
+
+  async onBarcodeScanned(barcodedString: string) {
+    const regex = /\[([^\]]+)\](\d+)/;
+    const match = barcodedString.match(regex);
+    if (!match) {
+      throw new Error('Invalid barcode format');
+    }
+    const sorterID = match[1];
+    const barcode = match[2];
+
+    const locations = await this.eslService.getAllLocationsBySorter(sorterID);
+
+    const orderIDs = locations
+      .map((location) => location.orderID)
+      .filter((orderID) => !!orderID);
+
+    const orders = await this.ordersRepository.findBy({
+      PEDSAP: In(orderIDs),
+    });
+
+    const newOrders = await Promise.all(
+      orders.map(async (order) => {
+        const orderProduct = order.orderProducts.find(
+          (p) => p.product.EAN === barcode,
+        );
+        if (orderProduct) {
+          console.log('orderProduct exists [Location ID]:', order.location);
+          await this.updateLocationWithEANandQuantity(
+            order.location,
+            orderProduct.product.EAN,
+            orderProduct.quantity,
+          );
+        } else {
+          console.log(
+            'orderProduct does not exist [Location ID]:',
+            order.location,
+          );
+          await this.updateLocationWithEANandQuantity(
+            order.location,
+            barcode,
+            0,
+          );
+        }
+        this.ordersRepository.update(order.id, {
+          currentProductEAN: barcode,
+          currentProductQuantity: orderProduct?.quantity ?? 0,
+        });
+      }),
+    );
+
+    return newOrders;
   }
 }

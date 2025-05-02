@@ -14,6 +14,7 @@ import { SapModule } from 'src/sap/sap.module';
     forwardRef(() => ProductsModule),
     EslModule,
     SapModule,
+    ProductsModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

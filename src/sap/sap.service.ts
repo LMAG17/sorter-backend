@@ -127,7 +127,7 @@ export class SapService {
         },
       });
       console.log('Request', xml);
-      const DUMMY = false;
+      const DUMMY = true;
       const response = DUMMY
         ? this.mockGetOrders()
         : await this.http
@@ -167,14 +167,14 @@ export class SapService {
         <n0:ZWS_ENVIO_OLA_UBICACResponse xmlns:n0="urn:sap-com:document:sap:rfc:functions">
             <T_ZSDT_ASIGUBIC>
                 <item>
-                    <UBICA>DUMMY</UBICA>
+                    <UBICA>1000000001</UBICA>
                     <OLA/>
                     <POSOLA/>
-                    <PEDSAP/>
+                    <PEDSAP>4810541877</PEDSAP>
                     <MENSAJE>ENVIADO</MENSAJE>
                 </item>
                 <item>
-                  <UBICA>10000000004</UBICA>
+                  <UBICA>1000000002</UBICA>
                   <OLA>20000839049</OLA>
                   <POSOLA/>
                   <PEDSAP>4810541876</PEDSAP>
@@ -185,16 +185,16 @@ export class SapService {
                   <item>
                      <CONSEC>0000001407</CONSEC>
                      <IDFACTU>44</IDFACTU>
-                     <SKUSAP>20010439001</SKUSAP>
-                     <PEDSAP>4810541858</PEDSAP>
-                     <TANUM>0004367846</TANUM>
+                     <SKUSAP>20010439002</SKUSAP>
+                     <PEDSAP>4810541877</PEDSAP>
+                     <TANUM>0004367847</TANUM>
                      <ENTSAP>82088066</ENTSAP>
-                     <EAN>7703907706404</EAN>
-                     <CANTID>4</CANTID>
+                     <EAN>7702192741749</EAN>
+                     <CANTID>10</CANTID>
                      <OLA>2000039036</OLA>
                      <POSOLA/>
                      <FECREG>2023-10-03T16:00:00</FECREG>
-                     <MENSAJE>ENVIADO</MENSAJE>
+                     <MENSAJE>DESTELLE</MENSAJE>
                   </item>
                   <item>
                      <CONSEC>0000001408</CONSEC>
@@ -208,7 +208,7 @@ export class SapService {
                      <OLA>2000039036</OLA>
                      <POSOLA/>
                      <FECREG>2023-10-03T16:00:00</FECREG>
-                     <MENSAJE>ENVIADO</MENSAJE>
+                     <MENSAJE>DESTELLE</MENSAJE>
                   </item>
                   <item>
                     <CONSEC>00000091430</CONSEC>

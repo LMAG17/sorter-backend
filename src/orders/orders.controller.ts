@@ -196,4 +196,15 @@ export class OrdersController {
   ) {
     return this.ordersService.submitOrderComplete(+id, submitOrderDto);
   }
+  @ApiOperation({
+    summary: 'This will get the barcoded product',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'This will update all the labels for the product',
+  })
+  @Get('scan/:scannedString')
+  getBarcodedProduct(@Param('scannedString') scannedString: string) {
+    return this.ordersService.onBarcodeScanned(scannedString);
+  }
 }

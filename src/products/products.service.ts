@@ -3,7 +3,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class ProductsService {
@@ -25,6 +25,16 @@ export class ProductsService {
     return this.productRepository.findOne({
       where: { id },
     });
+  }
+
+  findOneByEAN(products: CreateProductDto[]) {
+    return this.productRepository.findBy({
+      EAN: In(products.map((p) => p.EAN)),
+    });
+  }
+
+  createMany(products: CreateProductDto[]) {
+    return this.productRepository.save(this.productRepository.create(products));
   }
 
   update(id: number, updateProductDto: UpdateProductDto) {
