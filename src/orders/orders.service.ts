@@ -346,7 +346,9 @@ export class OrdersService {
     return await this.ordersRepository.save(order);
   }
 
-  async submitProductCompleted(locationId: string) {
+  async submitProductCompleted(locationId: string, tagId?: string) {
+    console.log('TagId', tagId);
+
     const [location] = await this.eslService.getLocationById(locationId);
 
     if (!location) {

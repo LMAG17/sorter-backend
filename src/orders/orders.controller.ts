@@ -177,6 +177,21 @@ export class OrdersController {
     status: 200,
     description: 'This product is complete of picking',
   })
+  @Post('NFC-submit-product-quantity/:locationId/:TAGID')
+  submitProductCompleteWithTAG(
+    @Param('locationId') locationId: string,
+    @Param('TAGID') tagId?: string,
+  ) {
+    return this.ordersService.submitProductCompleted(locationId, tagId);
+  }
+
+  @ApiOperation({
+    summary: 'This will submit a complete for current Product',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'This product is complete of picking',
+  })
   @Post('NFC-submit-product-quantity/:locationId')
   submitProductComplete(@Param('locationId') locationId: string) {
     return this.ordersService.submitProductCompleted(locationId);
@@ -196,6 +211,7 @@ export class OrdersController {
   ) {
     return this.ordersService.submitOrderComplete(+id, submitOrderDto);
   }
+
   @ApiOperation({
     summary: 'This will get the barcoded product',
   })
