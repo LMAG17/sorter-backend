@@ -367,8 +367,8 @@ export class OrdersService {
       (product) => product.product.EAN === order.currentProductEAN,
     );
 
-    if (currentProductIndex === -1) {
-      await this.updateLocationWithEANandQuantity(locationId, ' ', 0);
+    await this.updateLocationWithEANandQuantity(locationId, ' ', 0);
+    if (currentProductIndex < 0) {
       const newOrder = {
         ...order,
         currentProductEAN: '',
@@ -397,10 +397,10 @@ export class OrdersService {
 
     if (leftProducts.length <= 0) {
       newOrder.status = 3;
-      this.eslService.updateLocation(locationId, 'productEAN', ' ');
-      this.eslService.updateLocation(locationId, 'productQuantity', 0);
-      this.eslService.updateLocation(locationId, 'orderID', ' ');
-      this.sapService.updateOrder(
+      await this.eslService.updateLocation(locationId, 'productEAN', ' ');
+      await this.eslService.updateLocation(locationId, 'productQuantity', 0);
+      await this.eslService.updateLocation(locationId, 'orderID', ' ');
+      await this.sapService.updateOrder(
         newOrder.PEDSAP ?? '',
         newOrder.orderProducts.map((prod) => ({
           MATNR: prod.product.EAN,

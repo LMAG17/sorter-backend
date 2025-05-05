@@ -268,28 +268,32 @@ export class SapService {
       });
 
       console.log('Request', xml);
-
-      const response = await this.http
-        .post(
-          `${this.baseUrl}/sap/bc/srt/rfc/sap/zws_sorter_mv/300/zws_sorter_mw/zws_sorter_mv`,
-          xml,
-          {
-            headers: {
-              'Content-Type': 'text/xml',
+      try {
+        const response = await this.http
+          .post(
+            `${this.baseUrl}/sap/bc/srt/rfc/sap/zws_sorter_mv/300/zws_sorter_mw/zws_sorter_mv`,
+            xml,
+            {
+              headers: {
+                'Content-Type': 'text/xml',
+              },
+              httpsAgent: this.agent,
             },
-            httpsAgent: this.agent,
-          },
-        )
-        .toPromise();
+          )
+          .toPromise();
 
-      // Convertimos XML SOAP a JSON
-      const json = await parseStringPromise(response?.data, {
-        explicitArray: false,
-        ignoreAttrs: true,
-        trim: true,
-      });
-      console.log('Response:', json);
-      return json;
+        // Convertimos XML SOAP a JSON
+        const json = await parseStringPromise(response?.data, {
+          explicitArray: false,
+          ignoreAttrs: true,
+          trim: true,
+        });
+        console.log('Response:', json);
+        return json;
+      } catch (error) {
+        console.error('Error in SOAP request:', error?.response?.data);
+        return error;
+      }
     } catch (error) {
       console.error('Error updating order:', error?.response?.data);
       throw error;
