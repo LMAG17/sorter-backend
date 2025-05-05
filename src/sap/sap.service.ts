@@ -21,6 +21,16 @@ export class SapService {
   }
 
   formatOrders(data: SAPOrdersResponse) {
+    if (
+      !data['soap-env:Envelope']['soap-env:Body'][
+        'n0:ZWS_ENVIO_OLA_UBICACResponse'
+      ]['T_ZSDT_ASIGUBIC'] ||
+      !data['soap-env:Envelope']['soap-env:Body'][
+        'n0:ZWS_ENVIO_OLA_UBICACResponse'
+      ]['T_ZSDT_LOGMULVEN']
+    ) {
+      return [];
+    }
     const locations =
       data['soap-env:Envelope']['soap-env:Body'][
         'n0:ZWS_ENVIO_OLA_UBICACResponse'
