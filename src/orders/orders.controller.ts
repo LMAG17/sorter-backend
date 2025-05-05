@@ -177,7 +177,7 @@ export class OrdersController {
     status: 200,
     description: 'This product is complete of picking',
   })
-  @Post('submit-product-quantity/:locationId')
+  @Post('NFC-submit-product-quantity/:locationId')
   submitProductComplete(@Param('locationId') locationId: string) {
     return this.ordersService.submitProductCompleted(locationId);
   }

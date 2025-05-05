@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { CreateLocationDto } from './dto/create-location.dto';
+import * as https from 'https';
 
 @Injectable()
 export class EslService {
@@ -11,6 +12,7 @@ export class EslService {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
+  agent: https.Agent;
   constructor(
     private readonly http: HttpService,
     private configService: ConfigService,
@@ -18,6 +20,7 @@ export class EslService {
     this.baseUrl = this.configService.get<string>('ESL_SERVER_URL');
     this.apiKey = this.configService.get<string>('API_KEY');
     this.headers['x-api-key'] = this.apiKey;
+    this.agent = new https.Agent({ rejectUnauthorized: false });
   }
 
   // ------------ Labels ------------
@@ -25,7 +28,10 @@ export class EslService {
   async getAllLabels() {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/ESL`, { headers: this.headers })
+        .get(`${this.baseUrl}/ESL`, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -37,7 +43,10 @@ export class EslService {
   async getAvailableLabels() {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/ESL`, { headers: this.headers })
+        .get(`${this.baseUrl}/ESL`, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
 
       return response?.data?.filter(({ ID }: { ID: string }) => !!!ID);
@@ -50,7 +59,10 @@ export class EslService {
   async getLabelById(id: string) {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/ESL/${id}`, { headers: this.headers })
+        .get(`${this.baseUrl}/ESL/${id}`, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -62,7 +74,10 @@ export class EslService {
   async getSpecificLabelProperty(id: string, property: string) {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/ESL/${id}/${property}`, { headers: this.headers })
+        .get(`${this.baseUrl}/ESL/${id}/${property}`, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -74,7 +89,10 @@ export class EslService {
   async updateLabel(id: string, data: any) {
     try {
       const response = await this.http
-        .put(`${this.baseUrl}/ESL/${id}`, data, { headers: this.headers })
+        .put(`${this.baseUrl}/ESL/${id}`, data, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -90,6 +108,7 @@ export class EslService {
         null,
         {
           headers: this.headers,
+          httpsAgent: this.agent,
         },
       )
       .toPromise();
@@ -109,6 +128,7 @@ export class EslService {
         null,
         {
           headers: this.headers,
+          httpsAgent: this.agent,
         },
       )
       .toPromise();
@@ -120,11 +140,13 @@ export class EslService {
       await this.http
         .delete(`${this.baseUrl}/ESL/${id}/link`, {
           headers: this.headers,
+          httpsAgent: this.agent,
         })
         .toPromise();
       const response = await this.http
         .post(`${this.baseUrl}/ESL/${id}/link/${locationId}`, null, {
           headers: this.headers,
+          httpsAgent: this.agent,
         })
         .toPromise();
       return response?.data;
@@ -139,6 +161,7 @@ export class EslService {
       const response = await this.http
         .put(`${this.baseUrl}/ESL/${id}/unlink`, null, {
           headers: this.headers,
+          httpsAgent: this.agent,
         })
         .toPromise();
       return response?.data;
@@ -153,7 +176,10 @@ export class EslService {
   async createLocation(data: CreateLocationDto) {
     try {
       const response = await this.http
-        .put(`${this.baseUrl}/Products`, [data], { headers: this.headers })
+        .put(`${this.baseUrl}/Products`, [data], {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -165,7 +191,10 @@ export class EslService {
   async getAllLocations() {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/Products`, { headers: this.headers })
+        .get(`${this.baseUrl}/Products`, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -177,7 +206,10 @@ export class EslService {
   async getAllLocationsBySorter(sorterID: string) {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/Products`, { headers: this.headers })
+        .get(`${this.baseUrl}/Products`, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
 
       return response?.data?.filter(
@@ -192,7 +224,10 @@ export class EslService {
   async getAvailableLocations() {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/Products`, { headers: this.headers })
+        .get(`${this.baseUrl}/Products`, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
 
       return response?.data?.filter(
@@ -207,7 +242,10 @@ export class EslService {
   async getLocationById(id: string) {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/Products/${id}`, { headers: this.headers })
+        .get(`${this.baseUrl}/Products/${id}`, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -228,6 +266,7 @@ export class EslService {
           null,
           {
             headers: this.headers,
+            httpsAgent: this.agent,
           },
         )
         .toPromise();
@@ -241,7 +280,10 @@ export class EslService {
   async deleteLocation(id: string) {
     try {
       const response = await this.http
-        .delete(`${this.baseUrl}/Products/${id}`, { headers: this.headers })
+        .delete(`${this.baseUrl}/Products/${id}`, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -255,7 +297,10 @@ export class EslService {
   async getAllLinks() {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/Links`, { headers: this.headers })
+        .get(`${this.baseUrl}/Links`, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {
@@ -267,7 +312,10 @@ export class EslService {
   async getLinkById(id: string) {
     try {
       const response = await this.http
-        .get(`${this.baseUrl}/Links/${id}`, { headers: this.headers })
+        .get(`${this.baseUrl}/Links/${id}`, {
+          headers: this.headers,
+          httpsAgent: this.agent,
+        })
         .toPromise();
       return response?.data;
     } catch (error) {

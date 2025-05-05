@@ -353,47 +353,64 @@ export class OrdersService {
       throw new Error('No hay ubicación asignada');
     }
 
-    const order = await this.ordersRepository.findOne({
-      where: { id: location.orderID },
+    const [order] = await this.ordersRepository.findBy({
+      PEDSAP: location.orderID,
     });
 
     if (!order) {
       throw new Error('No hay orden asignada a esta ubicación');
     }
 
-    const currentProductEan = location.productEAN;
-
     const currentProductIndex = order.orderProducts.findIndex(
-      (product) => product.product.EAN === currentProductEan,
+      (product) => product.product.EAN === order.currentProductEAN,
     );
 
     if (currentProductIndex === -1) {
-      throw new Error('Producto actual no encontrado en la orden');
+      await this.updateLocationWithEANandQuantity(locationId, ' ', 0);
+      const newOrder = {
+        ...order,
+        currentProductEAN: '',
+        currentProductQuantity: 0,
+      };
+      await this.ordersRepository.save(newOrder);
+      return newOrder;
     }
 
-    const nextProduct = order.orderProducts.filter(
-      (product) => product.product.EAN !== currentProductEan,
-    )[0];
+    const newOrder = { ...order };
 
-    if (!nextProduct) {
-      throw new Error('No hay más productos asignados a esta ubicación');
+    newOrder.orderProducts[currentProductIndex].pickedQuantity =
+      newOrder.orderProducts[currentProductIndex].quantity;
+    newOrder.orderProducts[currentProductIndex].done = true;
+
+    newOrder.currentProductEAN = '';
+    newOrder.currentProductQuantity = 0;
+
+    const [{ MAC }] = await this.eslService.getLabelById(locationId);
+
+    this.eslService.emitLabelSound(MAC);
+
+    const leftProducts = newOrder.orderProducts.filter(
+      (product) => !product.done,
+    );
+
+    if (leftProducts.length <= 0) {
+      newOrder.status = 3;
+      this.eslService.updateLocation(locationId, 'productEAN', ' ');
+      this.eslService.updateLocation(locationId, 'productQuantity', 0);
+      this.eslService.updateLocation(locationId, 'orderID', ' ');
+      this.sapService.updateOrder(
+        newOrder.PEDSAP ?? '',
+        newOrder.orderProducts.map((prod) => ({
+          MATNR: prod.product.EAN,
+          LFIMG: prod.pickedQuantity,
+        })),
+        true,
+      );
     }
 
-    const [MAC] = await this.eslService.getLabelById(locationId);
+    await this.ordersRepository.save(newOrder);
 
-    this.eslService.emitLabelSound(MAC.MAC);
-    this.eslService.updateLocation(
-      locationId,
-      'productEAN',
-      nextProduct.product.EAN,
-    );
-    this.eslService.updateLocation(
-      locationId,
-      'productQuantity',
-      nextProduct.quantity,
-    );
-
-    return order;
+    return newOrder;
   }
 
   async updateLocationWithEANandQuantity(
@@ -457,6 +474,11 @@ export class OrdersService {
           currentProductEAN: barcode,
           currentProductQuantity: orderProduct?.quantity ?? 0,
         });
+        return {
+          ...order,
+          currentProductEAN: barcode,
+          currentProductQuantity: orderProduct?.quantity ?? 0,
+        };
       }),
     );
 
