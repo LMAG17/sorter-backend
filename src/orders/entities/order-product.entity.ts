@@ -21,6 +21,9 @@ export class OrderProduct {
   @Column({ nullable: true, default: 0 })
   pickedQuantity: number;
 
+  @Column({ nullable: true, default: 0 })
+  shippedQuantity: number;
+
   @Column({ nullable: true, default: false })
   done: boolean;
 

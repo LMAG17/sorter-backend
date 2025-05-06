@@ -326,24 +326,27 @@ export class OrdersService {
       throw new Error('Order not assigned to SAP');
     }
 
+    const productsToSend = await Promise.all(
+      order.orderProducts.filter((prd) =>
+        submitOrderDto.isLastBox
+          ? prd.pickedQuantity > prd.shippedQuantity ||
+            (prd.pickedQuantity === 0 && prd.shippedQuantity === 0)
+          : prd.pickedQuantity > prd.shippedQuantity,
+      ),
+    );
+
     await this.sapService.updateOrder(
       order.orderProducts[0].ENTSAP ?? '',
-      order.orderProducts
-        .filter((prod) =>
-          !submitOrderDto.isLastBox
-            ? prod.done && prod.pickedQuantity > 0
-            : (prod.done && prod.pickedQuantity > 0) || !prod.done,
-        )
-        .map((prod) => ({
-          MATNR: prod.SKUSAP,
-          LFIMG: prod.pickedQuantity,
-        })),
+      productsToSend.map((prod) => ({
+        MATNR: prod.SKUSAP,
+        LFIMG: prod.pickedQuantity,
+      })),
       submitOrderDto.isLastBox,
     );
 
     const newProducts = order.orderProducts.map((product) => {
       if (product.done) {
-        product.pickedQuantity = 0;
+        product.shippedQuantity = product.pickedQuantity;
       }
       return product;
     });
@@ -414,28 +417,29 @@ export class OrdersService {
       await this.eslService.updateLocation(locationId, 'productEAN', ' ');
       await this.eslService.updateLocation(locationId, 'productQuantity', 0);
       await this.eslService.updateLocation(locationId, 'orderID', ' ');
+      const productsToSend = await Promise.all(
+        newOrder.orderProducts.filter(
+          (prod) =>
+            prod.pickedQuantity > prod.shippedQuantity ||
+            (prod.pickedQuantity === 0 && prod.shippedQuantity === 0),
+        ),
+      );
       await this.sapService.updateOrder(
         newOrder.orderProducts[0].ENTSAP ?? '',
-        newOrder.orderProducts
-          .filter(
-            (prod) => (prod.done && prod.pickedQuantity > 0) || !prod.done,
-          )
-          .map((prod) => ({
-            MATNR: prod.SKUSAP,
-            LFIMG: prod.pickedQuantity,
-          })),
+        productsToSend.map((prod) => ({
+          MATNR: prod.SKUSAP,
+          LFIMG: prod.pickedQuantity,
+        })),
         true,
       );
+      const newProducts = order.orderProducts.map((product) => {
+        if (product.done) {
+          product.shippedQuantity = product.pickedQuantity;
+        }
+        return product;
+      });
+      newOrder.orderProducts = newProducts;
     }
-
-    const newProducts = order.orderProducts.map((product) => {
-      if (product.done) {
-        product.pickedQuantity = 0;
-      }
-      return product;
-    });
-
-    newOrder.orderProducts = newProducts;
 
     await this.ordersRepository.save(newOrder);
 
