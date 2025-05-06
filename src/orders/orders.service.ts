@@ -328,12 +328,27 @@ export class OrdersService {
 
     await this.sapService.updateOrder(
       order.orderProducts[0].ENTSAP ?? '',
-      order.orderProducts.map((prod) => ({
-        MATNR: prod.SKUSAP,
-        LFIMG: prod.pickedQuantity,
-      })),
+      order.orderProducts
+        .filter((prod) =>
+          !submitOrderDto.isLastBox
+            ? prod.done && prod.pickedQuantity > 0
+            : (prod.done && prod.pickedQuantity > 0) || !prod.done,
+        )
+        .map((prod) => ({
+          MATNR: prod.SKUSAP,
+          LFIMG: prod.pickedQuantity,
+        })),
       submitOrderDto.isLastBox,
     );
+
+    const newProducts = order.orderProducts.map((product) => {
+      if (product.done) {
+        product.pickedQuantity = 0;
+      }
+      return product;
+    });
+
+    order.orderProducts = newProducts;
 
     if (submitOrderDto.isLastBox) {
       order.status = 3;
@@ -401,13 +416,26 @@ export class OrdersService {
       await this.eslService.updateLocation(locationId, 'orderID', ' ');
       await this.sapService.updateOrder(
         newOrder.orderProducts[0].ENTSAP ?? '',
-        newOrder.orderProducts.map((prod) => ({
-          MATNR: prod.SKUSAP,
-          LFIMG: prod.pickedQuantity,
-        })),
+        newOrder.orderProducts
+          .filter(
+            (prod) => (prod.done && prod.pickedQuantity > 0) || !prod.done,
+          )
+          .map((prod) => ({
+            MATNR: prod.SKUSAP,
+            LFIMG: prod.pickedQuantity,
+          })),
         true,
       );
     }
+
+    const newProducts = order.orderProducts.map((product) => {
+      if (product.done) {
+        product.pickedQuantity = 0;
+      }
+      return product;
+    });
+
+    newOrder.orderProducts = newProducts;
 
     await this.ordersRepository.save(newOrder);
 
