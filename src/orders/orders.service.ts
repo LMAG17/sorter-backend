@@ -225,8 +225,6 @@ export class OrdersService {
       (order) => !existingOrdersMap.has(order.PEDSAP),
     );
 
-    let newOrdersData: any[] = [];
-
     for (const order of newOrders) {
       const orderData = await this.create(order);
       try {
@@ -238,10 +236,9 @@ export class OrdersService {
       } catch (error) {
         console.log('Error updating ESL location:', error);
       }
-      newOrdersData.push(orderData);
     }
 
-    return [...existingOrders, ...newOrdersData];
+    return await this.ordersRepository.find();
   }
 
   async findOne(id: number) {
