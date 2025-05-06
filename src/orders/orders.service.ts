@@ -51,6 +51,8 @@ export class OrdersService {
       quantity: p.quantity,
       pickedQuantity: 0,
       done: false,
+      SKUSAP: p.SKUSAP,
+      ENTSAP: p.ENTSAP,
     }));
 
     const order = this.ordersRepository.create({
@@ -328,9 +330,9 @@ export class OrdersService {
     }
 
     await this.sapService.updateOrder(
-      order.PEDSAP,
+      order.orderProducts[0].ENTSAP ?? '',
       order.orderProducts.map((prod) => ({
-        MATNR: prod.product.EAN,
+        MATNR: prod.SKUSAP,
         LFIMG: prod.pickedQuantity,
       })),
       submitOrderDto.isLastBox,
@@ -401,9 +403,9 @@ export class OrdersService {
       await this.eslService.updateLocation(locationId, 'productQuantity', 0);
       await this.eslService.updateLocation(locationId, 'orderID', ' ');
       await this.sapService.updateOrder(
-        newOrder.PEDSAP ?? '',
+        newOrder.orderProducts[0].ENTSAP ?? '',
         newOrder.orderProducts.map((prod) => ({
-          MATNR: prod.product.EAN,
+          MATNR: prod.SKUSAP,
           LFIMG: prod.pickedQuantity,
         })),
         true,

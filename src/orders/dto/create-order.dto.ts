@@ -16,6 +16,20 @@ class CreateProductInOrderDto {
   })
   @IsNumber()
   quantity: number;
+
+  @ApiProperty({
+    example: '000000010000257003',
+    description: 'SKU of the material in the SAP system',
+  })
+  @IsString()
+  SKUSAP: string;
+
+  @ApiProperty({
+    example: '0082088196',
+    description: 'ID of the entry in the SAP system',
+  })
+  @IsString()
+  ENTSAP: string;
 }
 
 export class CreateOrderDto {

@@ -75,6 +75,8 @@ export class SapService {
         location.products.push({
           EAN: product.EAN,
           quantity: Number(product.CANTID),
+          SKUSAP: product.SKUSAP,
+          ENTSAP: product.ENTSAP,
         });
       }
     }

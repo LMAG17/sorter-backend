@@ -198,7 +198,7 @@ export class EslService {
         .toPromise();
       return response?.data;
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching Locations:', error);
       throw error;
     }
   }
@@ -216,7 +216,7 @@ export class EslService {
         ({ sorter }: { sorter: string }) => sorter === sorterID,
       );
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching Locations:', error);
       throw error;
     }
   }
@@ -234,7 +234,7 @@ export class EslService {
         ({ orderID }: { orderID: string }) => !!!orderID,
       );
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching Locations:', error);
       throw error;
     }
   }

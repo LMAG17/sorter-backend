@@ -23,4 +23,10 @@ export class OrderProduct {
 
   @Column({ nullable: true, default: false })
   done: boolean;
+
+  @Column({ nullable: true })
+  SKUSAP: string;
+
+  @Column({ nullable: true })
+  ENTSAP: string;
 }
