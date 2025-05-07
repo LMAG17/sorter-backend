@@ -182,7 +182,7 @@ export class OrdersController {
     @Param('locationId') locationId: string,
     @Param('TAGID') tagId?: string,
   ) {
-    return this.ordersService.submitProductCompleted(locationId, tagId);
+    return this.ordersService.onNFC(locationId, tagId);
   }
 
   @ApiOperation({

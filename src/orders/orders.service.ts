@@ -13,6 +13,12 @@ import { SubmitProductQuantityDto } from './dto/submit-product-quantity.dto';
 import { SubmitOrderDto } from './dto/submit-order.dto';
 import { ProductsService } from 'src/products/products.service';
 
+const COLORS = {
+  BLUE: 'bd3887da',
+  GREEN: '8d7b62da',
+  PURPLE: '5d7289da',
+};
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -363,9 +369,19 @@ export class OrdersService {
     return await this.ordersRepository.save(order);
   }
 
-  async submitProductCompleted(locationId: string, tagId?: string) {
-    console.log('TagId', tagId);
+  async onNFC(locationId: string, tagId?: string) {
+    if (!tagId) {
+      throw new Error('Tag ID is required');
+    } else if (tagId === COLORS.GREEN) {
+      return await this.submitProductCompleted(locationId);
+    } else if (tagId === COLORS.BLUE) {
+      return await this.onRequestBoxNFC(locationId);
+    } else if (tagId === COLORS.PURPLE) {
+      return await this.onRequestCompleteOrderNFC(locationId);
+    }
+  }
 
+  async submitProductCompleted(locationId: string) {
     const [location] = await this.eslService.getLocationById(locationId);
 
     if (!location) {
@@ -406,7 +422,7 @@ export class OrdersService {
 
     const [{ MAC }] = await this.eslService.getLabelById(locationId);
 
-    this.eslService.emitLabelSound(MAC);
+    this.eslService.emitLabelSound(MAC, 'COMPLETED');
 
     const leftProducts = newOrder.orderProducts.filter(
       (product) => !product.done,
@@ -461,60 +477,117 @@ export class OrdersService {
     return locationId;
   }
 
-  async onBarcodeScanned(barcodedString: string) {
-    const regex = /\[([^\]]+)\](\d+)/;
-    const match = barcodedString.match(regex);
-    if (!match) {
-      throw new Error('Invalid barcode format');
+  async onRequestBoxNFC(locationId: string) {
+    const location = await this.eslService.getLocationById(locationId);
+    if (!location) {
+      throw new Error('No hay ubicación asignada');
     }
-    const sorterID = match[1];
-    const barcode = match[2];
 
-    const locations = await this.eslService.getAllLocationsBySorter(sorterID);
-
-    const orderIDs = locations
-      .map((location) => location.orderID)
-      .filter((orderID) => !!orderID);
-
-    const orders = await this.ordersRepository.findBy({
-      PEDSAP: In(orderIDs),
+    const order = await this.ordersRepository.findOneBy({
+      PEDSAP: location.orderID,
     });
 
-    const newOrders = await Promise.all(
-      orders.map(async (order) => {
-        const orderProduct = order.orderProducts.find(
-          (p) => p.product.EAN === barcode,
-        );
-        if (orderProduct) {
-          console.log('orderProduct exists [Location ID]:', order.location);
-          await this.updateLocationWithEANandQuantity(
-            order.location,
-            orderProduct.product.EAN,
-            orderProduct.quantity,
-          );
-        } else {
-          console.log(
-            'orderProduct does not exist [Location ID]:',
-            order.location,
-          );
-          await this.updateLocationWithEANandQuantity(
-            order.location,
-            barcode,
-            0,
-          );
-        }
-        this.ordersRepository.update(order.id, {
-          currentProductEAN: barcode,
-          currentProductQuantity: orderProduct?.quantity ?? 0,
-        });
-        return {
-          ...order,
-          currentProductEAN: barcode,
-          currentProductQuantity: orderProduct?.quantity ?? 0,
-        };
-      }),
-    );
+    if (!order) {
+      throw new Error('No hay orden asignada a esta ubicación');
+    }
 
-    return newOrders;
+    this.submitOrderComplete(order.id, {
+      isLastBox: false,
+    });
+
+    return order;
+  }
+
+  async onRequestCompleteOrderNFC(locationId: string) {
+    const location = await this.eslService.getLocationById(locationId);
+    if (!location) {
+      throw new Error('No hay ubicación asignada');
+    }
+
+    const order = await this.ordersRepository.findOneBy({
+      PEDSAP: location.orderID,
+    });
+
+    if (!order) {
+      throw new Error('No hay orden asignada a esta ubicación');
+    }
+
+    this.submitOrderComplete(order.id, {
+      isLastBox: true,
+    });
+
+    return order;
+  }
+
+  async onBarcodeScanned(barcodedString: string) {
+    if (!barcodedString) {
+      throw new Error('Invalid barcode string');
+    } else if (barcodedString.includes('OBTENER_PEDIDOS')) {
+      const orders = await this.findAllWithSap();
+      return orders;
+    } else if (barcodedString.includes('PEDIR_CAJA')) {
+      const locationId = barcodedString.split('-')[1];
+      console.log('PEDIR_CAJA', locationId);
+      return await this.onRequestBoxNFC(locationId);
+    } else if (barcodedString.includes('COMPLETAR')) {
+      const locationId = barcodedString.split('-')[1];
+      console.log('COMPLETAR', locationId);
+      return await this.submitProductCompleted(locationId);
+    } else {
+      const regex = /\[([^\]]+)\](\d+)/;
+      const match = barcodedString.match(regex);
+      if (!match) {
+        throw new Error('Invalid barcode format');
+      }
+      const sorterID = match[1];
+      const barcode = match[2];
+
+      const locations = await this.eslService.getAllLocationsBySorter(sorterID);
+
+      const orderIDs = locations
+        .map((location) => location.orderID)
+        .filter((orderID) => !!orderID);
+
+      const orders = await this.ordersRepository.findBy({
+        PEDSAP: In(orderIDs),
+      });
+
+      const newOrders = await Promise.all(
+        orders.map(async (order) => {
+          const orderProduct = order.orderProducts.find(
+            (p) => p.product.EAN === barcode,
+          );
+          if (orderProduct) {
+            console.log('orderProduct exists [Location ID]:', order.location);
+            await this.updateLocationWithEANandQuantity(
+              order.location,
+              orderProduct.product.EAN,
+              orderProduct.quantity,
+            );
+          } else {
+            console.log(
+              'orderProduct does not exist [Location ID]:',
+              order.location,
+            );
+            await this.updateLocationWithEANandQuantity(
+              order.location,
+              barcode,
+              0,
+            );
+          }
+          this.ordersRepository.update(order.id, {
+            currentProductEAN: barcode,
+            currentProductQuantity: orderProduct?.quantity ?? 0,
+          });
+          return {
+            ...order,
+            currentProductEAN: barcode,
+            currentProductQuantity: orderProduct?.quantity ?? 0,
+          };
+        }),
+      );
+
+      return newOrders;
+    }
   }
 }

@@ -101,16 +101,19 @@ export class EslService {
     }
   }
 
-  async emitLabelSound(id: string) {
+  SOUNDS = {
+    PROSSECING: (mac: string) =>
+      `${this.baseUrl}/ESL/${mac}/MIDI_SOUND/0/HIGH/procesando:d=8,o=5,b=100:g6,e6,c6,p,g6,e6,c6`,
+    COMPLETED: (mac: string) =>
+      `${this.baseUrl}/ESL/${mac}/MIDI_SOUND/0/HIGH/completado:d=8,o=5,b=160:c6,e6,g6,p,g6`,
+  };
+
+  async emitLabelSound(mac: string, sound: 'PROSSECING' | 'COMPLETED') {
     const response = await this.http
-      .post(
-        `${this.baseUrl}/ESL/${id}/SOUND/130/HIGH/1318,1567,2637,2093,2349,3135`,
-        null,
-        {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        },
-      )
+      .post(this.SOUNDS[sound](mac), null, {
+        headers: this.headers,
+        httpsAgent: this.agent,
+      })
       .toPromise();
     return response;
   }
