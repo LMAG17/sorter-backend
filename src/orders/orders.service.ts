@@ -340,15 +340,18 @@ export class OrdersService {
           : prd.pickedQuantity > prd.shippedQuantity,
       ),
     );
-
-    await this.sapService.updateOrder(
-      order.orderProducts[0].ENTSAP ?? '',
-      productsToSend.map((prod) => ({
-        MATNR: prod.SKUSAP,
-        LFIMG: prod.pickedQuantity,
-      })),
-      submitOrderDto.isLastBox,
-    );
+    try {
+      await this.sapService.updateOrder(
+        order.orderProducts[0].ENTSAP ?? '',
+        productsToSend.map((prod) => ({
+          MATNR: prod.SKUSAP,
+          LFIMG: prod.pickedQuantity,
+        })),
+        submitOrderDto.isLastBox,
+      );
+    } catch (error) {
+      console.log('Error completing order SAP', error);
+    }
 
     const newProducts = order.orderProducts.map((product) => {
       if (product.done) {
