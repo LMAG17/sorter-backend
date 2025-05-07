@@ -204,7 +204,7 @@ export class ESLController {
   @ApiParam({ name: 'id', description: 'Label ID' })
   @ApiResponse({ status: 200, description: 'Sound emitted' })
   async emitLabelSound(@Param('id') id: string) {
-    return await this.eslService.emitLabelSound(id);
+    return await this.eslService.emitLabelSound(id,'PROSSECING');
   }
 
   @ApiOperation({ summary: 'Makes the label blink' })
