@@ -5,7 +5,6 @@ import { EslService } from 'src/esl/esl.service';
 import { In, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Product } from 'src/products/entities/product.entity';
 import { AssignOrderDto } from './dto/assign-order.dto';
 import { AssignProductForPickingDto } from './dto/assign-product.dto';
 import { SapService } from 'src/sap/sap.service';
@@ -92,17 +91,18 @@ export class OrdersService {
 
     const updatedOrder = await this.ordersRepository.save(order);
 
-    await this.eslService.updateLocation(location, 'orderID', order.id);
-    await this.eslService.updateLocation(
-      location,
-      'productEAN',
-      updatedOrder.orderProducts[0].product.EAN,
+    const totalQuantity = updatedOrder.orderProducts.reduce(
+      (acc, product) => acc + product.quantity,
+      0,
     );
-    await this.eslService.updateLocation(
-      location,
-      'productQuantity',
-      updatedOrder.orderProducts[0].quantity,
-    );
+
+    await this.eslService.smartUpdateLocation(location, {
+      orderID: order.PEDSAP,
+      productEAN: updatedOrder.orderProducts[0].product.EAN,
+      productQuantity: updatedOrder.orderProducts[0].quantity,
+      pickedQuantity: 0,
+      totalQuantity,
+    });
 
     return updatedOrder;
   }
@@ -134,16 +134,10 @@ export class OrdersService {
         currentProductQuantity: orderProduct.quantity,
       });
       try {
-        await this.eslService.updateLocation(
-          order.location,
-          'productEAN',
-          orderProduct.product.EAN,
-        );
-        await this.eslService.updateLocation(
-          order.location,
-          'productQuantity',
-          orderProduct.quantity,
-        );
+        this.eslService.smartUpdateLocation(order.location, {
+          productEAN: orderProduct.product.EAN,
+          productQuantity: orderProduct.quantity,
+        });
       } catch (error) {
         console.log('Error updating ESL location:', error);
       }
@@ -164,7 +158,7 @@ export class OrdersService {
       throw new Error('Order not found');
     }
 
-    const location = await this.eslService.getLocationById(order.location);
+    const [location] = await this.eslService.getLocationById(order.location);
     if (!location) {
       throw new Error('Location not assigned');
     }
@@ -192,7 +186,7 @@ export class OrdersService {
     if (!order) {
       throw new Error('Order not found');
     }
-    const location = await this.eslService.getLocationById(order.location);
+    const [location] = await this.eslService.getLocationById(order.location);
     if (!location) {
       throw new Error('Location not assigned');
     }
@@ -233,12 +227,18 @@ export class OrdersService {
 
     for (const order of newOrders) {
       const orderData = await this.create(order);
+      const totalQuantity = orderData.orderProducts.reduce(
+        (acc, product) => acc + product.quantity,
+        0,
+      );
       try {
-        await this.eslService.updateLocation(
-          order.location,
-          'orderID',
-          orderData.PEDSAP ?? orderData.id,
-        );
+        await this.eslService.smartUpdateLocation(order.location, {
+          orderID: orderData.PEDSAP,
+          productEAN: orderData.orderProducts[0].product.EAN,
+          productQuantity: orderData.orderProducts[0].quantity,
+          pickedQuantity: 0,
+          totalQuantity: totalQuantity,
+        });
       } catch (error) {
         console.log('Error updating ESL location:', error);
       }
@@ -364,9 +364,13 @@ export class OrdersService {
 
     if (submitOrderDto.isLastBox) {
       order.status = 3;
-      this.eslService.updateLocation(order.location, 'productEAN', ' ');
-      this.eslService.updateLocation(order.location, 'productQuantity', 0);
-      this.eslService.updateLocation(order.location, 'orderID', ' ');
+      this.eslService.smartUpdateLocation(order.location, {
+        orderID: ' ',
+        productEAN: ' ',
+        productQuantity: 0,
+        pickedQuantity: 0,
+        totalQuantity: 0,
+      });
     }
 
     return await this.ordersRepository.save(order);
@@ -385,6 +389,10 @@ export class OrdersService {
   }
 
   async submitProductCompleted(locationId: string) {
+    const [{ MAC }] = await this.eslService.getLabelById(locationId);
+    
+    this.eslService.emitLabelSound(MAC, 'PROSSECING');
+
     const [location] = await this.eslService.getLocationById(locationId);
 
     if (!location) {
@@ -403,7 +411,11 @@ export class OrdersService {
       (product) => product.product.EAN === order.currentProductEAN,
     );
 
-    await this.updateLocationWithEANandQuantity(locationId, ' ', 0);
+    const pickedQuantity = order.orderProducts.reduce(
+      (acc, product) => acc + product.pickedQuantity,
+      0,
+    );
+
     if (currentProductIndex < 0) {
       const newOrder = {
         ...order,
@@ -422,8 +434,13 @@ export class OrdersService {
 
     newOrder.currentProductEAN = '';
     newOrder.currentProductQuantity = 0;
+    
 
-    const [{ MAC }] = await this.eslService.getLabelById(locationId);
+    await this.eslService.smartUpdateLocation(locationId, {
+      productEAN: ' ',
+      productQuantity: 0,
+      pickedQuantity,
+    });
 
     this.eslService.emitLabelSound(MAC, 'COMPLETED');
 
@@ -433,9 +450,13 @@ export class OrdersService {
 
     if (leftProducts.length <= 0) {
       newOrder.status = 3;
-      await this.eslService.updateLocation(locationId, 'productEAN', ' ');
-      await this.eslService.updateLocation(locationId, 'productQuantity', 0);
-      await this.eslService.updateLocation(locationId, 'orderID', ' ');
+      this.eslService.smartUpdateLocation(order.location, {
+        orderID: ' ',
+        productEAN: ' ',
+        productQuantity: 0,
+        pickedQuantity: 0,
+        totalQuantity: 0,
+      });
       const productsToSend = await Promise.all(
         newOrder.orderProducts.filter(
           (prod) =>
@@ -451,13 +472,13 @@ export class OrdersService {
         })),
         true,
       );
-      const newProducts = order.orderProducts.map((product) => {
+      const updatedProducts = order.orderProducts.map((product) => {
         if (product.done) {
           product.shippedQuantity = product.pickedQuantity;
         }
         return product;
       });
-      newOrder.orderProducts = newProducts;
+      newOrder.orderProducts = updatedProducts;
     }
 
     await this.ordersRepository.save(newOrder);
@@ -465,23 +486,8 @@ export class OrdersService {
     return newOrder;
   }
 
-  async updateLocationWithEANandQuantity(
-    locationId: string,
-    productEAN: string,
-    productQuantity: number,
-  ) {
-    await this.eslService.updateLocation(locationId, 'productEAN', productEAN);
-    await this.eslService.updateLocation(
-      locationId,
-      'productQuantity',
-      productQuantity,
-    );
-
-    return locationId;
-  }
-
   async onRequestBoxNFC(locationId: string) {
-    const location = await this.eslService.getLocationById(locationId);
+    const [location] = await this.eslService.getLocationById(locationId);
     if (!location) {
       throw new Error('No hay ubicación asignada');
     }
@@ -502,7 +508,7 @@ export class OrdersService {
   }
 
   async onRequestCompleteOrderNFC(locationId: string) {
-    const location = await this.eslService.getLocationById(locationId);
+    const [location] = await this.eslService.getLocationById(locationId);
     if (!location) {
       throw new Error('No hay ubicación asignada');
     }
@@ -562,21 +568,19 @@ export class OrdersService {
           );
           if (orderProduct) {
             console.log('orderProduct exists [Location ID]:', order.location);
-            await this.updateLocationWithEANandQuantity(
-              order.location,
-              orderProduct.product.EAN,
-              orderProduct.quantity,
-            );
+            this.eslService.smartUpdateLocation(order.location, {
+              productEAN: orderProduct.product.EAN,
+              productQuantity: orderProduct.quantity,
+            });
           } else {
             console.log(
               'orderProduct does not exist [Location ID]:',
               order.location,
             );
-            await this.updateLocationWithEANandQuantity(
-              order.location,
-              barcode,
-              0,
-            );
+            this.eslService.smartUpdateLocation(order.location, {
+              productEAN: barcode,
+              productQuantity: 0,
+            });
           }
           this.ordersRepository.update(order.id, {
             currentProductEAN: barcode,

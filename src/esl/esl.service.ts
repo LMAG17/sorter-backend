@@ -259,7 +259,14 @@ export class EslService {
 
   async updateLocation(
     id: string,
-    column: 'id' | 'name' | 'productEAN' | 'orderID' | 'productQuantity',
+    column:
+      | 'id'
+      | 'name'
+      | 'productEAN'
+      | 'orderID'
+      | 'productQuantity'
+      | 'pickedQuantity'
+      | 'totalQuantity',
     value: number | string,
   ) {
     try {
@@ -277,6 +284,36 @@ export class EslService {
     } catch (error) {
       // console.error('Error updating product:', error);
       throw error;
+    }
+  }
+
+  async smartUpdateLocation(
+    id: string,
+    data: {
+      productEAN?: string;
+      orderID?: string;
+      productQuantity?: number;
+      pickedQuantity?: number;
+      totalQuantity?: number;
+    },
+  ) {
+    if (!id) {
+      throw new Error('ID is required');
+    }
+    if (data.orderID) {
+      this.updateLocation(id, 'orderID', data.orderID);
+    }
+    if (data.productEAN) {
+      this.updateLocation(id, 'productEAN', data.productEAN);
+    }
+    if (data.productQuantity) {
+      this.updateLocation(id, 'productQuantity', data.productQuantity);
+    }
+    if (data.pickedQuantity) {
+      this.updateLocation(id, 'pickedQuantity', data.pickedQuantity);
+    }
+    if (data.totalQuantity) {
+      this.updateLocation(id, 'totalQuantity', data.totalQuantity);
     }
   }
 
