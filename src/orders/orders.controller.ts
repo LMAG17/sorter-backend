@@ -177,24 +177,12 @@ export class OrdersController {
     status: 200,
     description: 'This product is complete of picking',
   })
-  @Post('NFC-submit-product-quantity/:locationId/:TAGID')
-  submitProductCompleteWithTAG(
+  @Post('NFC/:locationId/:TAGID')
+  onNFC(
     @Param('locationId') locationId: string,
     @Param('TAGID') tagId?: string,
   ) {
     return this.ordersService.onNFC(locationId, tagId);
-  }
-
-  @ApiOperation({
-    summary: 'This will submit a complete for current Product',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'This product is complete of picking',
-  })
-  @Post('NFC-submit-product-quantity/:locationId')
-  submitProductComplete(@Param('locationId') locationId: string) {
-    return this.ordersService.submitProductCompleted(locationId);
   }
 
   @ApiOperation({
