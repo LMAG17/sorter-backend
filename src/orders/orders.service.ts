@@ -250,6 +250,7 @@ export class OrdersService {
   async findOne(id: number) {
     return await this.ordersRepository.findOne({
       where: { id },
+      relations: ['orderProducts', 'orderProducts.product'],
     });
   }
   async update(id: number, updateOrderDto: UpdateOrderDto) {
@@ -390,9 +391,7 @@ export class OrdersService {
 
   async submitProductCompleted(locationId: string) {
     const [{ MAC }] = await this.eslService.getLabelById(locationId);
-    
     this.eslService.emitLabelSound(MAC, 'PROSSECING');
-
     const [location] = await this.eslService.getLocationById(locationId);
 
     if (!location) {
@@ -434,7 +433,6 @@ export class OrdersService {
 
     newOrder.currentProductEAN = '';
     newOrder.currentProductQuantity = 0;
-    
 
     await this.eslService.smartUpdateLocation(locationId, {
       productEAN: ' ',
@@ -596,5 +594,63 @@ export class OrdersService {
 
       return newOrders;
     }
+  }
+
+  async getOrdersByWave(wave: string) {
+    const orders = await this.ordersRepository.find({
+      where: { wave },
+      relations: ['orderProducts', 'orderProducts.product'],
+    });
+    return orders;
+  }
+
+  async getOrdersGroupedByWave() {
+    const orders = await this.ordersRepository.find();
+
+    const groupedOrders = orders.reduce((acc, order) => {
+      if (!acc[order.wave]) {
+        acc[order.wave] = {
+          wave: order.wave,
+          totalProducts: 0,
+          totalPicked: 0,
+        };
+      }
+      if (!acc[order.wave].orders) {
+        acc[order.wave].orders = [];
+      }
+      const totalProducts = order.orderProducts.reduce(
+        (total, product) => total + product.quantity,
+        0,
+      );
+      const totalPicked = order.orderProducts.reduce(
+        (total, product) => total + product.pickedQuantity,
+        0,
+      );
+      acc[order.wave].orders.push({
+        ...order,
+        totalProducts,
+        totalPicked,
+      });
+      acc[order.wave].totalProducts =
+        (acc[order.wave].totalProducts ?? 0) + totalProducts;
+      acc[order.wave].totalPicked =
+        (acc[order.wave].totalPicked ?? 0) + totalPicked;
+      return acc;
+    }, {});
+
+    return groupedOrders;
+  }
+
+  async getOrderByPEDSAP(PEDSAP: string) {
+    const order = await this.ordersRepository.findOne({
+      where: { PEDSAP },
+      relations: ['orderProducts', 'orderProducts.product'],
+    });
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    return order;
   }
 }

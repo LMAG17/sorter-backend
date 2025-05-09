@@ -100,7 +100,7 @@ export class OrdersController {
     description: 'This will return all orders from DATABASE',
   })
   @Post('classic')
-  async getOrders() {
+  getOrders() {
     return this.ordersService.findAll();
   }
 
@@ -210,5 +210,41 @@ export class OrdersController {
   @Get('scan/:scannedString')
   getBarcodedProduct(@Param('scannedString') scannedString: string) {
     return this.ordersService.onBarcodeScanned(scannedString);
+  }
+
+  @ApiOperation({
+    summary: 'This will return all the orders grouped by wave',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'This will return all the orders grouped by wave',
+  })
+  @Post('grouped-by-wave')
+  getOrdersByWave() {
+    return this.ordersService.getOrdersGroupedByWave();
+  }
+
+  @ApiOperation({
+    summary: 'This will return the orders by wave',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'This will return the orders by wave',
+  })
+  @Post('orders-by-wave/:id')
+  getOrdersByWaveId(@Param('id') id: string) {
+    return this.ordersService.getOrdersByWave(id);
+  }
+
+  @ApiOperation({
+    summary: 'This will return the order by PEDSAP',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'This will return the order by PEDSAP',
+  })
+  @Post('order-by-pedsap/:PEDSAP')
+  getWaveByPEDSAP(@Param('PEDSAP') PEDSAP: string) {
+    return this.ordersService.getOrderByPEDSAP(PEDSAP);
   }
 }
