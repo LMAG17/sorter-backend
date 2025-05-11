@@ -6,6 +6,7 @@ import * as https from 'https';
 import { ConfigService } from '@nestjs/config';
 import { SAPOrdersResponse } from './tyoes';
 
+const DUMMY = true;
 @Injectable()
 export class SapService {
   baseUrl: string | undefined = '';
@@ -139,7 +140,7 @@ export class SapService {
         },
       });
       console.log('Request', xml);
-      const DUMMY = true;
+
       const response = DUMMY
         ? this.mockGetOrders()
         : await this.http
@@ -181,35 +182,35 @@ export class SapService {
 			xmlns:n0="urn:sap-com:document:sap:rfc:functions">
 			<T_ZSDT_ASIGUBIC>
 				<item>
-					<UBICA>1000000006</UBICA>
+					<UBICA>1000000000</UBICA>
 					<OLA>2000039099</OLA>
 					<POSOLA/>
 					<PEDSAP>4810541968</PEDSAP>
 					<MENSAJE>ENVIADO</MENSAJE>
 				</item>
 				<item>
-					<UBICA>1000000007</UBICA>
+					<UBICA>1000000001</UBICA>
 					<OLA>2000039099</OLA>
 					<POSOLA/>
 					<PEDSAP>4810541969</PEDSAP>
 					<MENSAJE>ENVIADO</MENSAJE>
 				</item>
 				<item>
-					<UBICA>1000000008</UBICA>
+					<UBICA>1000000002</UBICA>
 					<OLA>2000039099</OLA>
 					<POSOLA/>
 					<PEDSAP>4810541970</PEDSAP>
 					<MENSAJE>ENVIADO</MENSAJE>
 				</item>
 				<item>
-					<UBICA>1000000009</UBICA>
+					<UBICA>1000000003</UBICA>
 					<OLA>2000039099</OLA>
 					<POSOLA/>
 					<PEDSAP>4810541971</PEDSAP>
 					<MENSAJE>ENVIADO</MENSAJE>
 				</item>
 				<item>
-					<UBICA>1000000010</UBICA>
+					<UBICA>1000000004</UBICA>
 					<OLA>2000039099</OLA>
 					<POSOLA/>
 					<PEDSAP>4810541972</PEDSAP>
@@ -612,18 +613,22 @@ export class SapService {
 
       console.log('Request', xml);
       try {
-        const response = await this.http
-          .post(
-            `${this.baseUrl}/sap/bc/srt/rfc/sap/zws_sorter_mv/300/zws_sorter_mw/zws_sorter_mv`,
-            xml,
-            {
-              headers: {
-                'Content-Type': 'text/xml',
-              },
-              httpsAgent: this.agent,
-            },
-          )
-          .toPromise();
+        const response = DUMMY
+          ? {
+              data: '',
+            }
+          : await this.http
+              .post(
+                `${this.baseUrl}/sap/bc/srt/rfc/sap/zws_sorter_mv/300/zws_sorter_mw/zws_sorter_mv`,
+                xml,
+                {
+                  headers: {
+                    'Content-Type': 'text/xml',
+                  },
+                  httpsAgent: this.agent,
+                },
+              )
+              .toPromise();
 
         // Convertimos XML SOAP a JSON
         const json = await parseStringPromise(response?.data, {

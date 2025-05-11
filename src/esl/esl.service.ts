@@ -13,6 +13,7 @@ export class EslService {
     Accept: 'application/json',
   };
   agent: https.Agent;
+
   constructor(
     private readonly http: HttpService,
     private configService: ConfigService,
@@ -23,16 +24,39 @@ export class EslService {
     this.agent = new https.Agent({ rejectUnauthorized: false });
   }
 
+  async performRequest({
+    method = 'GET',
+    endpoint,
+    data,
+  }: {
+    method?: string;
+    endpoint: string;
+    data?: any;
+  }) {
+    const url = `${this.baseUrl}/${endpoint}`;
+
+    console.info('🔗 Performing request:', `[${method}] ${url}`);
+    const response = await this.http
+      .request({
+        method,
+        url,
+        data,
+        headers: this.headers,
+        httpsAgent: this.agent,
+      })
+      .toPromise();
+    console.log('Perform request Response:', response?.data);
+
+    return response;
+  }
+
   // ------------ Labels ------------
 
   async getAllLabels() {
     try {
-      const response = await this.http
-        .get(`${this.baseUrl}/ESL`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      const response = await this.performRequest({
+        endpoint: 'ESL',
+      });
       return response?.data;
     } catch (error) {
       console.error('Error fetching ESLs:', error);
@@ -42,14 +66,8 @@ export class EslService {
 
   async getAvailableLabels() {
     try {
-      const response = await this.http
-        .get(`${this.baseUrl}/ESL`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
-
-      return response?.data?.filter(({ ID }: { ID: string }) => !!!ID);
+      const response = await this.getAllLabels();
+      return response?.filter(({ ID }: { ID: string }) => !!!ID);
     } catch (error) {
       console.error('Error fetching ESLs:', error);
       throw error;
@@ -58,12 +76,9 @@ export class EslService {
 
   async getLabelById(id: string) {
     try {
-      const response = await this.http
-        .get(`${this.baseUrl}/ESL/${id}`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      const response = await this.performRequest({
+        endpoint: `ESL/${id}`,
+      });
       return response?.data;
     } catch (error) {
       console.error('Error fetching ESL:', error);
@@ -73,12 +88,9 @@ export class EslService {
 
   async getSpecificLabelProperty(id: string, property: string) {
     try {
-      const response = await this.http
-        .get(`${this.baseUrl}/ESL/${id}/${property}`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      const response = await this.performRequest({
+        endpoint: `ESL/${id}/${property}`,
+      });
       return response?.data;
     } catch (error) {
       console.error('Error fetching ESL:', error);
@@ -88,12 +100,11 @@ export class EslService {
 
   async updateLabel(id: string, data: any) {
     try {
-      const response = await this.http
-        .put(`${this.baseUrl}/ESL/${id}`, data, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      const response = await this.performRequest({
+        method: 'PUT',
+        endpoint: `ESL/${id}`,
+        data,
+      });
       return response?.data;
     } catch (error) {
       console.error('Error updating ESL:', error);
@@ -103,18 +114,17 @@ export class EslService {
 
   SOUNDS = {
     PROSSECING: (mac: string) =>
-      `${this.baseUrl}/ESL/${mac}/MIDI_SOUND/0/HIGH/procesando:d=8,o=5,b=100:g6,e6,c6,p,g6,e6,c6`,
+      `ESL/${mac}/MIDI_SOUND/0/HIGH/procesando:d=8,o=5,b=100:g6,e6,c6,p,g6,e6,c6`,
     COMPLETED: (mac: string) =>
-      `${this.baseUrl}/ESL/${mac}/MIDI_SOUND/0/HIGH/completado:d=8,o=5,b=160:c6,e6,g6,p,g6`,
+      `ESL/${mac}/MIDI_SOUND/0/HIGH/completado:d=8,o=5,b=160:c6,e6,g6,p,g6`,
   };
 
   async emitLabelSound(mac: string, sound: 'PROSSECING' | 'COMPLETED') {
-    const response = await this.http
-      .post(this.SOUNDS[sound](mac), null, {
-        headers: this.headers,
-        httpsAgent: this.agent,
-      })
-      .toPromise();
+    const response = await this.performRequest({
+      method: 'POST',
+      endpoint: this.SOUNDS[sound](mac),
+    });
+
     return response;
   }
 
@@ -125,33 +135,23 @@ export class EslService {
     percentage: number,
     repeatTimes: number,
   ) {
-    const response = await this.http
-      .post(
-        `${this.baseUrl}/ESL/${id}/LED/0/FLASH|${color}/${period}|${percentage}|${repeatTimes}`,
-        null,
-        {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        },
-      )
-      .toPromise();
+    const response = await this.performRequest({
+      method: 'POST',
+      endpoint: `ESL/${id}/LED/${color}/${period}/${percentage}/${repeatTimes}`,
+    });
     return response;
   }
 
   async linkLabelToLocation(id: string, locationId: string) {
     try {
-      await this.http
-        .delete(`${this.baseUrl}/ESL/${id}/link`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
-      const response = await this.http
-        .post(`${this.baseUrl}/ESL/${id}/link/${locationId}`, null, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      await this.performRequest({
+        method: 'DELETE',
+        endpoint: `ESL/${id}/link`,
+      });
+      const response = await this.performRequest({
+        method: 'POST',
+        endpoint: `ESL/${id}/link/${locationId}`,
+      });
       return response?.data;
     } catch (error) {
       console.error('Error linking ESL to product:', error);
@@ -161,12 +161,10 @@ export class EslService {
 
   async unlinkLabelAndLocation(id: string) {
     try {
-      const response = await this.http
-        .put(`${this.baseUrl}/ESL/${id}/unlink`, null, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      const response = await this.performRequest({
+        method: 'PUT',
+        endpoint: `ESL/${id}/unlink`,
+      });
       return response?.data;
     } catch (error) {
       console.error('Error unlinking ESL from product:', error);
@@ -178,12 +176,11 @@ export class EslService {
 
   async createLocation(data: CreateLocationDto) {
     try {
-      const response = await this.http
-        .put(`${this.baseUrl}/Products`, [data], {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      const response = await this.performRequest({
+        method: 'PUT',
+        endpoint: 'Products',
+        data: [data],
+      });
       return response?.data;
     } catch (error) {
       console.error('Error creating product:', error);
@@ -193,12 +190,10 @@ export class EslService {
 
   async getAllLocations() {
     try {
-      const response = await this.http
-        .get(`${this.baseUrl}/Products`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      const response = await this.performRequest({
+        method: 'GET',
+        endpoint: 'Products',
+      });
       return response?.data;
     } catch (error) {
       console.error('Error fetching Locations:', error);
@@ -208,14 +203,8 @@ export class EslService {
 
   async getAllLocationsBySorter(sorterID: string) {
     try {
-      const response = await this.http
-        .get(`${this.baseUrl}/Products`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
-
-      return response?.data?.filter(
+      const response = await this.getAllLocations();
+      return response?.filter(
         ({ sorter }: { sorter: string }) => sorter === sorterID,
       );
     } catch (error) {
@@ -226,16 +215,8 @@ export class EslService {
 
   async getAvailableLocations() {
     try {
-      const response = await this.http
-        .get(`${this.baseUrl}/Products`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
-
-      return response?.data?.filter(
-        ({ orderID }: { orderID: string }) => !!!orderID,
-      );
+      const response = await this.getAllLocations();
+      return response?.filter(({ orderID }: { orderID: string }) => !!!orderID);
     } catch (error) {
       console.error('Error fetching Locations:', error);
       throw error;
@@ -244,12 +225,9 @@ export class EslService {
 
   async getLocationById(id: string) {
     try {
-      const response = await this.http
-        .get(`${this.baseUrl}/Products/${id}`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      const response = await this.performRequest({
+        endpoint: `Products/${id}`,
+      });
       return response?.data;
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -270,19 +248,14 @@ export class EslService {
     value: number | string,
   ) {
     try {
-      const response = await this.http
-        .post(
-          `${this.baseUrl}/Products/${encodeURIComponent(id)}/${encodeURIComponent(column)}/${encodeURIComponent(value)}`,
-          null,
-          {
-            headers: this.headers,
-            httpsAgent: this.agent,
-          },
-        )
-        .toPromise();
+      const endpoint = `Products/${encodeURIComponent(id)}/${encodeURIComponent(column)}/${encodeURIComponent(value)}`;
+      const response = await this.performRequest({
+        method: 'POST',
+        endpoint: endpoint,
+      });
       return response?.data;
     } catch (error) {
-      // console.error('Error updating product:', error);
+      console.error('Error updating location:', error);
       throw error;
     }
   }
@@ -297,34 +270,35 @@ export class EslService {
       totalQuantity?: number;
     },
   ) {
+    console.log('Smart update location', id, data);
+
     if (!id) {
       throw new Error('ID is required');
     }
-    if (data.orderID) {
-      this.updateLocation(id, 'orderID', data.orderID);
+    if (!!data.orderID) {
+      await this.updateLocation(id, 'orderID', data.orderID);
     }
-    if (data.productEAN) {
-      this.updateLocation(id, 'productEAN', data.productEAN);
+    if (!!data.productEAN) {
+      await this.updateLocation(id, 'productEAN', data.productEAN);
     }
-    if (data.productQuantity) {
-      this.updateLocation(id, 'productQuantity', data.productQuantity);
+    if (!!data.productQuantity) {
+      await this.updateLocation(id, 'productQuantity', data.productQuantity);
     }
-    if (data.pickedQuantity) {
-      this.updateLocation(id, 'pickedQuantity', data.pickedQuantity);
+    if (!!data.pickedQuantity) {
+      await this.updateLocation(id, 'pickedQuantity', data.pickedQuantity);
     }
-    if (data.totalQuantity) {
-      this.updateLocation(id, 'totalQuantity', data.totalQuantity);
+    if (!!data.totalQuantity) {
+      await this.updateLocation(id, 'totalQuantity', data.totalQuantity);
     }
+    return data;
   }
 
   async deleteLocation(id: string) {
     try {
-      const response = await this.http
-        .delete(`${this.baseUrl}/Products/${id}`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      const response = await this.performRequest({
+        method: 'DELETE',
+        endpoint: `Products/${id}`,
+      });
       return response?.data;
     } catch (error) {
       console.error('Error deleting product:', error);
@@ -336,12 +310,10 @@ export class EslService {
 
   async getAllLinks() {
     try {
-      const response = await this.http
-        .get(`${this.baseUrl}/Links`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      const response = await this.performRequest({
+        endpoint: 'Links',
+      });
+
       return response?.data;
     } catch (error) {
       console.error('Error fetching links:', error);
@@ -351,12 +323,10 @@ export class EslService {
 
   async getLinkById(id: string) {
     try {
-      const response = await this.http
-        .get(`${this.baseUrl}/Links/${id}`, {
-          headers: this.headers,
-          httpsAgent: this.agent,
-        })
-        .toPromise();
+      const response = await this.performRequest({
+        endpoint: `Links/${id}`,
+      });
+
       return response?.data;
     } catch (error) {
       console.error('Error fetching link:', error);

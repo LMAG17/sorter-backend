@@ -98,8 +98,6 @@ export class OrdersService {
 
     await this.eslService.smartUpdateLocation(location, {
       orderID: order.PEDSAP,
-      productEAN: updatedOrder.orderProducts[0].product.EAN,
-      productQuantity: updatedOrder.orderProducts[0].quantity,
       pickedQuantity: 0,
       totalQuantity,
     });
@@ -134,7 +132,7 @@ export class OrdersService {
         currentProductQuantity: orderProduct.quantity,
       });
       try {
-        this.eslService.smartUpdateLocation(order.location, {
+        await this.eslService.smartUpdateLocation(order.location, {
           productEAN: orderProduct.product.EAN,
           productQuantity: orderProduct.quantity,
         });
@@ -234,8 +232,6 @@ export class OrdersService {
       try {
         await this.eslService.smartUpdateLocation(order.location, {
           orderID: orderData.PEDSAP,
-          productEAN: orderData.orderProducts[0].product.EAN,
-          productQuantity: orderData.orderProducts[0].quantity,
           pickedQuantity: 0,
           totalQuantity: totalQuantity,
         });
@@ -365,7 +361,7 @@ export class OrdersService {
 
     if (submitOrderDto.isLastBox) {
       order.status = 3;
-      this.eslService.smartUpdateLocation(order.location, {
+      await this.eslService.smartUpdateLocation(order.location, {
         orderID: ' ',
         productEAN: ' ',
         productQuantity: 0,
@@ -410,11 +406,6 @@ export class OrdersService {
       (product) => product.product.EAN === order.currentProductEAN,
     );
 
-    const pickedQuantity = order.orderProducts.reduce(
-      (acc, product) => acc + product.pickedQuantity,
-      0,
-    );
-
     if (currentProductIndex < 0) {
       const newOrder = {
         ...order,
@@ -434,6 +425,12 @@ export class OrdersService {
     newOrder.currentProductEAN = '';
     newOrder.currentProductQuantity = 0;
 
+    const pickedQuantity =
+      newOrder.orderProducts.reduce(
+        (acc, product) => acc + product.pickedQuantity,
+        0,
+      ) ?? 0;
+
     await this.eslService.smartUpdateLocation(locationId, {
       productEAN: ' ',
       productQuantity: 0,
@@ -448,7 +445,7 @@ export class OrdersService {
 
     if (leftProducts.length <= 0) {
       newOrder.status = 3;
-      this.eslService.smartUpdateLocation(order.location, {
+      await this.eslService.smartUpdateLocation(order.location, {
         orderID: ' ',
         productEAN: ' ',
         productQuantity: 0,
@@ -566,18 +563,9 @@ export class OrdersService {
           );
           if (orderProduct) {
             console.log('orderProduct exists [Location ID]:', order.location);
-            this.eslService.smartUpdateLocation(order.location, {
+            await this.eslService.smartUpdateLocation(order.location, {
               productEAN: orderProduct.product.EAN,
               productQuantity: orderProduct.quantity,
-            });
-          } else {
-            console.log(
-              'orderProduct does not exist [Location ID]:',
-              order.location,
-            );
-            this.eslService.smartUpdateLocation(order.location, {
-              productEAN: barcode,
-              productQuantity: 0,
             });
           }
           this.ordersRepository.update(order.id, {
