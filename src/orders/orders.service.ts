@@ -1,29 +1,20 @@
-import { Get, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { EslService } from 'src/esl/esl.service';
 import { In, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AssignOrderDto } from './dto/assign-order.dto';
-import { AssignProductForPickingDto } from './dto/assign-product.dto';
 import { SapService } from 'src/sap/sap.service';
 import { SubmitProductQuantityDto } from './dto/submit-product-quantity.dto';
 import { SubmitOrderDto } from './dto/submit-order.dto';
 import { ProductsService } from 'src/products/products.service';
-
-const COLORS = {
-  BLUE: 'bd3887da',
-  GREEN: '8d7b62da',
-  PURPLE: '5d7289da',
-};
 
 @Injectable()
 export class OrdersService {
   constructor(
     @InjectRepository(Order)
     private ordersRepository: Repository<Order>,
-    private readonly eslService: EslService,
     private readonly productsService: ProductsService,
     private readonly sapService: SapService,
   ) {}
@@ -91,118 +82,7 @@ export class OrdersService {
 
     const updatedOrder = await this.ordersRepository.save(order);
 
-    const totalQuantity = updatedOrder.orderProducts.reduce(
-      (acc, product) => acc + product.quantity,
-      0,
-    );
-
-    await this.eslService.smartUpdateLocation(location, {
-      orderID: order.PEDSAP,
-      pickedQuantity: 0,
-      totalQuantity,
-    });
-
     return updatedOrder;
-  }
-
-  async assignProducForPicking(
-    orderId: number,
-    assignProductForPickingDto: AssignProductForPickingDto,
-  ) {
-    try {
-      const { productEAN } = assignProductForPickingDto;
-      const order = await this.ordersRepository.findOne({
-        where: { id: orderId },
-      });
-      if (!order) {
-        throw new Error('Order not found');
-      }
-      const orderProductIndex = order.orderProducts.findIndex(
-        (p) => p.product.EAN === productEAN,
-      );
-
-      const orderProduct = order.orderProducts[orderProductIndex];
-
-      if (!orderProduct) {
-        throw new Error('Product not found in order');
-      }
-
-      this.ordersRepository.update(order.id, {
-        currentProductEAN: orderProduct.product.EAN,
-        currentProductQuantity: orderProduct.quantity,
-      });
-      try {
-        await this.eslService.smartUpdateLocation(order.location, {
-          productEAN: orderProduct.product.EAN,
-          productQuantity: orderProduct.quantity,
-        });
-      } catch (error) {
-        console.log('Error updating ESL location:', error);
-      }
-      return orderProduct;
-    } catch (error) {
-      console.error('Error assigning product for picking:', error);
-      throw error;
-    }
-  }
-
-  async assignedProductReducePickedQuantity(orderId: number) {
-    const order = await this.ordersRepository.findOne({
-      where: { id: orderId },
-      relations: ['orderProducts', 'orderProducts.product'],
-    });
-
-    if (!order) {
-      throw new Error('Order not found');
-    }
-
-    const [location] = await this.eslService.getLocationById(order.location);
-    if (!location) {
-      throw new Error('Location not assigned');
-    }
-    const assignedProduct = order.orderProducts.find(
-      (p) => p.product.EAN === location.productEAN,
-    );
-    if (!assignedProduct) {
-      throw new Error('Assigned product not found');
-    }
-    if (assignedProduct.pickedQuantity > 0) {
-      assignedProduct.pickedQuantity--;
-    } else {
-      throw new Error('Picked quantity cannot be less than 0');
-    }
-
-    return await this.ordersRepository.save(order);
-  }
-
-  async assignedProductIncreasePickedQuantity(orderId: number) {
-    const order = await this.ordersRepository.findOne({
-      where: { id: orderId },
-      relations: ['orderProducts', 'orderProducts.product'],
-    });
-
-    if (!order) {
-      throw new Error('Order not found');
-    }
-    const [location] = await this.eslService.getLocationById(order.location);
-    if (!location) {
-      throw new Error('Location not assigned');
-    }
-    const assignedProduct = order.orderProducts.find(
-      (p) => p.product.EAN === location.productEAN,
-    );
-    if (!assignedProduct) {
-      throw new Error('Assigned product not found');
-    }
-    if (assignedProduct.pickedQuantity < assignedProduct.quantity) {
-      assignedProduct.pickedQuantity++;
-    } else {
-      throw new Error(
-        'Picked quantity cannot be greater than the total quantity',
-      );
-    }
-
-    return await this.ordersRepository.save(order);
   }
 
   async findAll() {
@@ -224,20 +104,7 @@ export class OrdersService {
     );
 
     for (const order of newOrders) {
-      const orderData = await this.create(order);
-      const totalQuantity = orderData.orderProducts.reduce(
-        (acc, product) => acc + product.quantity,
-        0,
-      );
-      try {
-        await this.eslService.smartUpdateLocation(order.location, {
-          orderID: orderData.PEDSAP,
-          pickedQuantity: 0,
-          totalQuantity: totalQuantity,
-        });
-      } catch (error) {
-        console.log('Error updating ESL location:', error);
-      }
+      await this.create(order);
     }
 
     return await this.ordersRepository.find();
@@ -249,6 +116,7 @@ export class OrdersService {
       relations: ['orderProducts', 'orderProducts.product'],
     });
   }
+
   async update(id: number, updateOrderDto: UpdateOrderDto) {
     const order = await this.ordersRepository.findOne({
       where: { id },
@@ -345,6 +213,7 @@ export class OrdersService {
           LFIMG: prod.pickedQuantity,
         })),
         submitOrderDto.isLastBox,
+        submitOrderDto.name,
       );
     } catch (error) {
       console.log('Error completing order SAP', error);
@@ -361,159 +230,24 @@ export class OrdersService {
 
     if (submitOrderDto.isLastBox) {
       order.status = 3;
-      await this.eslService.smartUpdateLocation(order.location, {
-        orderID: ' ',
-        productEAN: ' ',
-        productQuantity: 0,
-        pickedQuantity: 0,
-        totalQuantity: 0,
+      order.orderProducts.forEach((product) => {
+        product.done = true;
       });
     }
 
     return await this.ordersRepository.save(order);
   }
 
-  async onNFC(locationId: string, tagId?: string) {
-    if (!tagId) {
-      throw new Error('Tag ID is required');
-    } else if (tagId === COLORS.GREEN) {
-      return await this.submitProductCompleted(locationId);
-    } else if (tagId === COLORS.BLUE) {
-      return await this.onRequestBoxNFC(locationId);
-    } else if (tagId === COLORS.PURPLE) {
-      return await this.onRequestCompleteOrderNFC(locationId);
-    }
-  }
-
-  async submitProductCompleted(locationId: string) {
-    const [{ MAC }] = await this.eslService.getLabelById(locationId);
-    this.eslService.emitLabelSound(MAC, 'PROSSECING');
-    const [location] = await this.eslService.getLocationById(locationId);
-
-    if (!location) {
-      throw new Error('No hay ubicación asignada');
-    }
-
-    const [order] = await this.ordersRepository.findBy({
-      PEDSAP: location.orderID,
-    });
-
-    if (!order) {
-      throw new Error('No hay orden asignada a esta ubicación');
-    }
-
-    const currentProductIndex = order.orderProducts.findIndex(
-      (product) => product.product.EAN === order.currentProductEAN,
-    );
-
-    if (currentProductIndex < 0) {
-      const newOrder = {
-        ...order,
-        currentProductEAN: '',
-        currentProductQuantity: 0,
-      };
-      await this.ordersRepository.save(newOrder);
-      return newOrder;
-    }
-
-    const newOrder = { ...order };
-
-    newOrder.orderProducts[currentProductIndex].pickedQuantity =
-      newOrder.orderProducts[currentProductIndex].quantity;
-    newOrder.orderProducts[currentProductIndex].done = true;
-
-    newOrder.currentProductEAN = '';
-    newOrder.currentProductQuantity = 0;
-
-    const pickedQuantity =
-      newOrder.orderProducts.reduce(
-        (acc, product) => acc + product.pickedQuantity,
-        0,
-      ) ?? 0;
-
-    await this.eslService.smartUpdateLocation(locationId, {
-      productEAN: ' ',
-      productQuantity: 0,
-      pickedQuantity,
-    });
-
-    this.eslService.emitLabelSound(MAC, 'COMPLETED');
-
-    const leftProducts = newOrder.orderProducts.filter(
-      (product) => !product.done,
-    );
-
-    if (leftProducts.length <= 0) {
-      newOrder.status = 3;
-      await this.eslService.smartUpdateLocation(order.location, {
-        orderID: ' ',
-        productEAN: ' ',
-        productQuantity: 0,
-        pickedQuantity: 0,
-        totalQuantity: 0,
-      });
-      const productsToSend = await Promise.all(
-        newOrder.orderProducts.filter(
-          (prod) =>
-            prod.pickedQuantity > prod.shippedQuantity ||
-            (prod.pickedQuantity === 0 && prod.shippedQuantity === 0),
-        ),
-      );
-      await this.sapService.updateOrder(
-        newOrder.orderProducts[0].ENTSAP ?? '',
-        productsToSend.map((prod) => ({
-          MATNR: prod.SKUSAP,
-          LFIMG: prod.pickedQuantity,
-        })),
-        true,
-      );
-      const updatedProducts = order.orderProducts.map((product) => {
-        if (product.done) {
-          product.shippedQuantity = product.pickedQuantity;
-        }
-        return product;
-      });
-      newOrder.orderProducts = updatedProducts;
-    }
-
-    await this.ordersRepository.save(newOrder);
-
-    return newOrder;
-  }
-
-  async onRequestBoxNFC(locationId: string) {
-    const [location] = await this.eslService.getLocationById(locationId);
-    if (!location) {
-      throw new Error('No hay ubicación asignada');
-    }
-
+  async onRequestCompleteOrder(PEDSAP: string) {
     const order = await this.ordersRepository.findOneBy({
-      PEDSAP: location.orderID,
+      PEDSAP,
     });
 
     if (!order) {
-      throw new Error('No hay orden asignada a esta ubicación');
-    }
-
-    this.submitOrderComplete(order.id, {
-      isLastBox: false,
-    });
-
-    return order;
-  }
-
-  async onRequestCompleteOrderNFC(locationId: string) {
-    const [location] = await this.eslService.getLocationById(locationId);
-    if (!location) {
-      throw new Error('No hay ubicación asignada');
-    }
-
-    const order = await this.ordersRepository.findOneBy({
-      PEDSAP: location.orderID,
-    });
-
-    if (!order) {
-      throw new Error('No hay orden asignada a esta ubicación');
+      throw new HttpException(
+        'No hay orden asignada a esta ubicación',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     this.submitOrderComplete(order.id, {
@@ -526,17 +260,6 @@ export class OrdersService {
   async onBarcodeScanned(barcodedString: string) {
     if (!barcodedString) {
       throw new Error('Invalid barcode string');
-    } else if (barcodedString.includes('OBTENER_PEDIDOS')) {
-      const orders = await this.findAllWithSap();
-      return orders;
-    } else if (barcodedString.includes('PEDIR_CAJA')) {
-      const locationId = barcodedString.split('-')[1];
-      console.log('PEDIR_CAJA', locationId);
-      return await this.onRequestBoxNFC(locationId);
-    } else if (barcodedString.includes('COMPLETAR')) {
-      const locationId = barcodedString.split('-')[1];
-      console.log('COMPLETAR', locationId);
-      return await this.submitProductCompleted(locationId);
     } else {
       const regex = /\[([^\]]+)\](\d+)/;
       const match = barcodedString.match(regex);
@@ -546,14 +269,8 @@ export class OrdersService {
       const sorterID = match[1];
       const barcode = match[2];
 
-      const locations = await this.eslService.getAllLocationsBySorter(sorterID);
-
-      const orderIDs = locations
-        .map((location) => location.orderID)
-        .filter((orderID) => !!orderID);
-
       const orders = await this.ordersRepository.findBy({
-        PEDSAP: In(orderIDs),
+        sorter: sorterID,
       });
 
       const newOrders = await Promise.all(
@@ -563,15 +280,11 @@ export class OrdersService {
           );
           if (orderProduct) {
             console.log('orderProduct exists [Location ID]:', order.location);
-            await this.eslService.smartUpdateLocation(order.location, {
-              productEAN: orderProduct.product.EAN,
-              productQuantity: orderProduct.quantity,
+            this.ordersRepository.update(order.id, {
+              currentProductEAN: barcode,
+              currentProductQuantity: orderProduct?.quantity ?? 0,
             });
           }
-          this.ordersRepository.update(order.id, {
-            currentProductEAN: barcode,
-            currentProductQuantity: orderProduct?.quantity ?? 0,
-          });
           return {
             ...order,
             currentProductEAN: barcode,
@@ -640,5 +353,11 @@ export class OrdersService {
     }
 
     return order;
+  }
+
+  async clearOrders() {
+    console.log('Clearing orders...');
+
+    return await this.ordersRepository.clear();
   }
 }

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class SubmitOrderDto {
   @ApiProperty({
@@ -8,4 +8,12 @@ export class SubmitOrderDto {
   })
   @IsBoolean()
   isLastBox: boolean;
+
+  @ApiProperty({
+    example: 'John Doe',
+    description: 'Name of the person who submitted the order',
+  })
+  @IsString()
+  @IsOptional()
+  name?: string;
 }

@@ -21,6 +21,9 @@ export class Order {
   @Column()
   wave: string;
 
+  @Column({ default: 'SRT1' })
+  sorter: string;
+
   @Column({ nullable: true })
   location: string;
 

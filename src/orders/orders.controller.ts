@@ -11,7 +11,6 @@ import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { AssignOrderDto } from './dto/assign-order.dto';
-import { AssignProductForPickingDto } from './dto/assign-product.dto';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { SubmitProductQuantityDto } from './dto/submit-product-quantity.dto';
@@ -45,51 +44,6 @@ export class OrdersController {
   @Post(':id/assign-location')
   assign(@Param('id') id: number, @Body() assignOrderDto: AssignOrderDto) {
     return this.ordersService.assign(id, assignOrderDto);
-  }
-
-  @ApiOperation({
-    summary: 'This endpoint assigns a product to an order for picking.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'The record has been successfully assigned for picking.',
-    type: AssignProductForPickingDto,
-  })
-  @Post(':id/assign-product-picking')
-  assignProducForPicking(
-    @Param('id') id: number,
-    @Body() assignProductForPickingDto: AssignProductForPickingDto,
-  ) {
-    return this.ordersService.assignProducForPicking(
-      id,
-      assignProductForPickingDto,
-    );
-  }
-
-  @ApiOperation({
-    summary:
-      'This endpoint reduces the picked quantity of an assigned product.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'The picked quantity has been successfully reduced.',
-  })
-  @Get(':id/assigned-product-reduce-picked-quantity')
-  assignedProductReducePickedQuantity(@Param('id') id: number) {
-    return this.ordersService.assignedProductReducePickedQuantity(id);
-  }
-
-  @ApiOperation({
-    summary:
-      'This endpoint reduces the picked quantity of an assigned product.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'The picked quantity has been successfully increased.',
-  })
-  @Get(':id/assigned-product-increase-picked-quantity')
-  assignedProductIncreasePickedQuantity(@Param('id') id: number) {
-    return this.ordersService.assignedProductIncreasePickedQuantity(id);
   }
 
   @ApiOperation({
@@ -171,21 +125,6 @@ export class OrdersController {
   }
 
   @ApiOperation({
-    summary: 'This will submit a complete for current Product',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'This product is complete of picking',
-  })
-  @Post('NFC/:locationId/:TAGID')
-  onNFC(
-    @Param('locationId') locationId: string,
-    @Param('TAGID') tagId?: string,
-  ) {
-    return this.ordersService.onNFC(locationId, tagId);
-  }
-
-  @ApiOperation({
     summary: 'This will submit a complete for order',
   })
   @ApiResponse({
@@ -246,5 +185,17 @@ export class OrdersController {
   @Post('order-by-pedsap/:PEDSAP')
   getWaveByPEDSAP(@Param('PEDSAP') PEDSAP: string) {
     return this.ordersService.getOrderByPEDSAP(PEDSAP);
+  }
+
+  @ApiOperation({
+    summary: 'This will clear the orders in the database',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'This will clear the orders in the database',
+  })
+  @Post('clear')
+  clearOrders() {
+    return this.ordersService.clearOrders();
   }
 }

@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { parseStringPromise } from 'xml2js';
 import * as js2xmlparser from 'js2xmlparser';
 import * as https from 'https';
@@ -579,13 +579,14 @@ export class SapService {
     PEDSAP: string,
     items: { MATNR: string; LFIMG: number }[],
     isLastBox: boolean,
+    name?: string,
   ) {
     try {
       const request = {
         GT_DATENT: {
           item: items,
         },
-        GV_OPERARIO: 'USUARIO DE PRUEBA',
+        GV_OPERARIO: name ?? 'USUARIO DE PRUEBA',
         GV_ULTENT: !!isLastBox ? 'X' : '',
         GV_VBELN: PEDSAP,
       };
@@ -644,7 +645,7 @@ export class SapService {
       }
     } catch (error) {
       console.error('Error updating order:', error?.response?.data);
-      throw error;
+      throw new InternalServerErrorException('Error updating order in SAP');
     }
   }
 }
